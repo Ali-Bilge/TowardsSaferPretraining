@@ -53,7 +53,7 @@ models/
 *.arrow
 
 # Secrets and credentials
-.env
+.env*
 *.key
 secrets.json
 credentials.json

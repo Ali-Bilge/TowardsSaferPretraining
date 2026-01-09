@@ -5,7 +5,7 @@ Taxonomy definitions for the three-dimensional safety classification framework.
 import logging
 from enum import Enum
 from typing import List, Dict
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 
 # Sentinel for default parameter
 _MISSING = object()
@@ -106,13 +106,20 @@ class HarmLabel:
     @classmethod
     def from_dict(cls, data: Dict[str, str]) -> "HarmLabel":
         """Create from dictionary with short names."""
-        return cls(
-            hate_violence=Dimension.from_label(data.get("H", "none")),
-            ideological=Dimension.from_label(data.get("IH", "none")),
-            sexual=Dimension.from_label(data.get("SE", "none")),
-            illegal=Dimension.from_label(data.get("IL", "none")),
-            self_inflicted=Dimension.from_label(data.get("SI", "none")),
-        )
+        # Build reverse lookup from short names to attribute names
+        short_name_mapping = HarmCategory.get_short_name_mapping()
+        short_to_attr = {
+            short_name: category.name.lower()
+            for category, short_name in short_name_mapping.items()
+        }
+
+        # Create kwargs dict for cls() constructor
+        kwargs = {}
+        for short_name, attr_name in short_to_attr.items():
+            label_value = data.get(short_name, "none")
+            kwargs[attr_name] = Dimension.from_label(label_value)
+
+        return cls(**kwargs)
 
     @classmethod
     def from_list(cls, labels: List[str]) -> "HarmLabel":
@@ -140,14 +147,7 @@ class HarmLabel:
 
     def is_topical(self) -> bool:
         """Check if any harm category is topical (but not toxic)."""
-        has_topical = any([
-            self.hate_violence == Dimension.TOPICAL,
-            self.ideological == Dimension.TOPICAL,
-            self.sexual == Dimension.TOPICAL,
-            self.illegal == Dimension.TOPICAL,
-            self.self_inflicted == Dimension.TOPICAL,
-        ])
-        return has_topical and not self.is_toxic()
+        return any(attr == Dimension.TOPICAL for attr in (self.hate_violence, self.ideological, self.sexual, self.illegal, self.self_inflicted)) and not self.is_toxic()
 
     def is_safe(self) -> bool:
         """Check if all harm categories are safe."""
@@ -155,10 +155,14 @@ class HarmLabel:
 
     def get_toxic_harms(self) -> List[HarmCategory]:
         """Get list of harm categories that are toxic."""
-        toxic_harms = []
-        for field in fields(self):
-            dimension = getattr(self, field.name)
-            if dimension == Dimension.TOXIC:
-                harm_category = HarmCategory[field.name.upper()]
-                toxic_harms.append(harm_category)
-        return toxic_harms
+        # Build mapping from HarmCategory to dimension values
+        attribute_mapping = {
+            HarmCategory.HATE_VIOLENCE: self.hate_violence,
+            HarmCategory.IDEOLOGICAL: self.ideological,
+            HarmCategory.SEXUAL: self.sexual,
+            HarmCategory.ILLEGAL: self.illegal,
+            HarmCategory.SELF_INFLICTED: self.self_inflicted,
+        }
+
+        return [category for category, dimension in attribute_mapping.items()
+                if dimension == Dimension.TOXIC]

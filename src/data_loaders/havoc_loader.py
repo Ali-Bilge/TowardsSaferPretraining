@@ -17,6 +17,16 @@ from ..utils.taxonomy import HarmLabel, Dimension
 
 logger = logging.getLogger(__name__)
 
+# Model configuration mapping: model_key -> (response_col, judge_col, label_col)
+MODEL_CONFIGS = {
+    'llama_3b': ('PrefixLlama3BResponse', 'Llama3BJudge', 'Llama3BLab'),
+    'llama_1b': ('PrefixLlama1BResponse', 'Llama1BJudge', 'Llama1BLab'),
+    'mistral_7b': ('PrefixMistral7BResponse', 'Mistral7BJudge', 'Mistral7BLab'),
+    'gemma_2b': ('PrefixGemma2BResponse', 'Gemma2BJudge', 'Gemma2BLab'),
+    'gemma_9b': ('PrefixGemma9BResponse', 'Gemma9BJudge', 'Gemma9BLab'),
+    'gemma_27b': ('PrefixGemma27BResponse', 'Gemma27BJudge', 'Gemma27BLab'),
+}
+
 
 @dataclass
 class ModelEvaluation:
@@ -47,7 +57,7 @@ class HAVOCSample:
         """Get concatenated prefix + suffix."""
         # Only insert separator when both parts are present, and trim boundary
         # whitespace to avoid double spaces/unwanted separators.
-        if self.prefix and self.suffix:
+        if self.prefix.strip() and self.suffix.strip():
             prefix = self.prefix.rstrip()
             suffix = self.suffix.lstrip()
             return prefix + self.separator + suffix if self.separator else prefix + suffix
@@ -173,57 +183,34 @@ class HAVOCLoader:
                 samples.append(sample)
 
         # Load model evaluations if available
-        if self.modeleval_filepath and self.modeleval_filepath.exists():
+        if self.modeleval_filepath:
             self._load_model_evaluations(samples)
 
         self._samples = samples
         return samples
 
     def _create_sample_key(self, prefix: str, suffix: str) -> str:
-        """Create a canonicalized key for sample matching."""
-        # Normalize whitespace and concatenate
-        return (prefix.strip() + suffix.strip()).replace('\t', ' ').replace('\n', ' ')
+        """Create a canonicalized key for sample matching.
+
+        Uses '\0' as a delimiter between prefix and suffix to prevent collisions.
+        Format: normalized_prefix + '\0' + normalized_suffix
+        """
+        # Normalize whitespace and concatenate with null byte delimiter
+        normalized_prefix = prefix.strip().replace('\t', ' ').replace('\n', ' ')
+        normalized_suffix = suffix.strip().replace('\t', ' ').replace('\n', ' ')
+        return normalized_prefix + '\0' + normalized_suffix
 
     def _populate_model_evaluations(self, sample: HAVOCSample, eval_row: Dict[str, str]):
         """Populate model evaluation data for a single sample."""
         sample.snippet = eval_row.get('Snippet')
         sample.prefix_gen_gpt_response = eval_row.get('PrefixGenGPTResponse')
 
-        sample.model_evaluations['llama_3b'] = ModelEvaluation(
-            response=eval_row.get('PrefixLlama3BResponse'),
-            judge=eval_row.get('Llama3BJudge'),
-            label=eval_row.get('Llama3BLab')
-        )
-
-        sample.model_evaluations['llama_1b'] = ModelEvaluation(
-            response=eval_row.get('PrefixLlama1BResponse'),
-            judge=eval_row.get('Llama1BJudge'),
-            label=eval_row.get('Llama1BLab')
-        )
-
-        sample.model_evaluations['mistral_7b'] = ModelEvaluation(
-            response=eval_row.get('PrefixMistral7BResponse'),
-            judge=eval_row.get('Mistral7BJudge'),
-            label=eval_row.get('Mistral7BLab')
-        )
-
-        sample.model_evaluations['gemma_2b'] = ModelEvaluation(
-            response=eval_row.get('PrefixGemma2BResponse'),
-            judge=eval_row.get('Gemma2BJudge'),
-            label=eval_row.get('Gemma2BLab')
-        )
-
-        sample.model_evaluations['gemma_9b'] = ModelEvaluation(
-            response=eval_row.get('PrefixGemma9BResponse'),
-            judge=eval_row.get('Gemma9BJudge'),
-            label=eval_row.get('Gemma9BLab')
-        )
-
-        sample.model_evaluations['gemma_27b'] = ModelEvaluation(
-            response=eval_row.get('PrefixGemma27BResponse'),
-            judge=eval_row.get('Gemma27BJudge'),
-            label=eval_row.get('Gemma27BLab')
-        )
+        for model_key, (response_col, judge_col, label_col) in MODEL_CONFIGS.items():
+            sample.model_evaluations[model_key] = ModelEvaluation(
+                response=eval_row.get(response_col),
+                judge=eval_row.get(judge_col),
+                label=eval_row.get(label_col)
+            )
 
     def _load_model_evaluations(self, samples: List[HAVOCSample]):
         """
@@ -243,7 +230,7 @@ class HAVOCLoader:
                 if prefix or suffix:  # Skip completely empty rows
                     key = self._create_sample_key(prefix, suffix)
                     if key in model_eval_lookup:
-                        logging.warning(f"Duplicate key found in model evaluations: {key[:100]}...")
+                        logger.warning(f"Duplicate key found in model evaluations: {key[:100]}...")
                     model_eval_lookup[key] = row
 
         # Second pass: match and merge with samples
@@ -257,14 +244,14 @@ class HAVOCLoader:
                 matched_count += 1
             else:
                 # No explicit match found - this is a problem
-                logging.warning(
+                logger.warning(
                     f"No matching model evaluation found for sample with prefix: "
                     f"{sample.prefix[:50]}... and suffix: {sample.suffix[:50]}..."
                 )
 
         # Log summary statistics
         total_samples = len(samples)
-        logging.info(
+        logger.info(
             f"Model evaluation matching: {matched_count}/{total_samples} samples matched "
             f"({len(model_eval_lookup)} evaluation rows available)"
         )
@@ -350,7 +337,7 @@ class HAVOCLoader:
 
         for sample in self._samples:
             label = getattr(sample.prefix_label, attr_name)
-            if (dimension is None and label not in (None, "safe")) or (dimension is not None and label == dimension):
+            if (dimension is None and label not in (None, Dimension.SAFE)) or (dimension is not None and label == dimension):
                 filtered.append(sample)
 
         return filtered

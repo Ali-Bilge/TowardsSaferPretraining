@@ -116,8 +116,7 @@ class TTPEvalLoader:
         with open(self.filepath, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter='\t')
 
-            line_number = 2  # Start at 2 since line 1 is headers
-            for row in reader:
+            for line_number, row in enumerate(reader, start=2):
                 try:
                     # Parse labels - handle both "None" and "Intent" formats
                     sample = TTPEvalSample(
@@ -143,8 +142,6 @@ class TTPEvalLoader:
                 except Exception as e:
                     url = row.get('URL', 'Unknown URL')
                     raise ValueError(f"Failed to parse row {line_number} (URL: {url}): {e}") from e
-                finally:
-                    line_number += 1
 
         self._samples = samples
         return samples
