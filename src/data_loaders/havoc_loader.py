@@ -123,7 +123,6 @@ class HAVOCLoader:
         if self.modeleval_filepath and not self.modeleval_filepath.exists():
             raise FileNotFoundError(f"Model evaluation file not found: {modeleval_filepath}")
         self._samples: Optional[List[HAVOCSample]] = None
-        self._cached_eval_rows: Optional[List[Dict[str, str]]] = None
 
     def _parse_label_list(self, label_str: str) -> HarmLabel:
         """
@@ -224,11 +223,11 @@ class HAVOCLoader:
         """
         # First pass: read model evaluations into lookup dict and cache rows
         model_eval_lookup = {}
-        self._cached_eval_rows = []
+        cached_eval_rows = []
         with open(self.modeleval_filepath, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter='\t')
             for row in reader:
-                self._cached_eval_rows.append(row)
+                cached_eval_rows.append(row)
                 prefix = (row.get('Prefix') or '').strip()
                 suffix = (row.get('Suffix') or '').strip()
                 if prefix or suffix:  # Skip completely empty rows
@@ -270,7 +269,7 @@ class HAVOCLoader:
             )
 
             # Use cached eval rows for index-based fallback
-            eval_rows = self._cached_eval_rows
+            eval_rows = cached_eval_rows
 
             for idx, sample in enumerate(samples):
                 if idx >= len(eval_rows):
