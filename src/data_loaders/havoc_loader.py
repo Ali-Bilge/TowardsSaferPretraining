@@ -6,6 +6,7 @@ for evaluating LLM safety across multiple harm dimensions.
 """
 
 import csv
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Union
 from dataclasses import dataclass, field
@@ -122,6 +123,7 @@ class HAVOCLoader:
         if self.modeleval_filepath and not self.modeleval_filepath.exists():
             raise FileNotFoundError(f"Model evaluation file not found: {modeleval_filepath}")
         self._samples: Optional[List[HAVOCSample]] = None
+        self._cached_eval_rows: Optional[List[Dict[str, str]]] = None
 
     def _parse_label_list(self, label_str: str) -> HarmLabel:
         """
@@ -196,8 +198,8 @@ class HAVOCLoader:
         Format: normalized_prefix + '\0' + normalized_suffix
         """
         # Normalize whitespace and concatenate with null byte delimiter
-        normalized_prefix = prefix.strip().replace('\t', ' ').replace('\n', ' ')
-        normalized_suffix = suffix.strip().replace('\t', ' ').replace('\n', ' ')
+        normalized_prefix = re.sub(r'\s+', ' ', prefix.strip())
+        normalized_suffix = re.sub(r'\s+', ' ', suffix.strip())
         return normalized_prefix + '\0' + normalized_suffix
 
     def _populate_model_evaluations(self, sample: HAVOCSample, eval_row: Dict[str, str]):
@@ -220,11 +222,13 @@ class HAVOCLoader:
         fragile index-based matching. Falls back to index-based matching only if
         explicit matching fails, with clear warnings.
         """
-        # First pass: read model evaluations into lookup dict
+        # First pass: read model evaluations into lookup dict and cache rows
         model_eval_lookup = {}
+        self._cached_eval_rows = []
         with open(self.modeleval_filepath, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter='\t')
             for row in reader:
+                self._cached_eval_rows.append(row)
                 prefix = (row.get('Prefix') or '').strip()
                 suffix = (row.get('Suffix') or '').strip()
                 if prefix or suffix:  # Skip completely empty rows
@@ -265,10 +269,8 @@ class HAVOCLoader:
                 "unmatched samples. This assumes files are in identical order."
             )
 
-            # Re-read the file for index-based fallback
-            with open(self.modeleval_filepath, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f, delimiter='\t')
-                eval_rows = list(reader)
+            # Use cached eval rows for index-based fallback
+            eval_rows = self._cached_eval_rows
 
             for idx, sample in enumerate(samples):
                 if idx >= len(eval_rows):

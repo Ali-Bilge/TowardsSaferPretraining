@@ -88,17 +88,21 @@ class HarmLabel:
     illegal: Dimension = Dimension.SAFE
     self_inflicted: Dimension = Dimension.SAFE
 
-    def to_dict(self) -> Dict[str, str]:
-        """Convert to dictionary format."""
-        # Build mapping from short names to dimension values
-        short_name_mapping = HarmCategory.get_short_name_mapping()
-        attribute_mapping = {
+    def _get_category_dimension_mapping(self) -> Dict[HarmCategory, Dimension]:
+        """Get mapping from HarmCategory to corresponding dimension attributes."""
+        return {
             HarmCategory.HATE_VIOLENCE: self.hate_violence,
             HarmCategory.IDEOLOGICAL: self.ideological,
             HarmCategory.SEXUAL: self.sexual,
             HarmCategory.ILLEGAL: self.illegal,
             HarmCategory.SELF_INFLICTED: self.self_inflicted,
         }
+
+    def to_dict(self) -> Dict[str, str]:
+        """Convert to dictionary format."""
+        # Build mapping from short names to dimension values
+        short_name_mapping = HarmCategory.get_short_name_mapping()
+        attribute_mapping = self._get_category_dimension_mapping()
 
         return {short_name_mapping[category]: dimension.value
                 for category, dimension in attribute_mapping.items()}
@@ -156,13 +160,7 @@ class HarmLabel:
     def get_toxic_harms(self) -> List[HarmCategory]:
         """Get list of harm categories that are toxic."""
         # Build mapping from HarmCategory to dimension values
-        attribute_mapping = {
-            HarmCategory.HATE_VIOLENCE: self.hate_violence,
-            HarmCategory.IDEOLOGICAL: self.ideological,
-            HarmCategory.SEXUAL: self.sexual,
-            HarmCategory.ILLEGAL: self.illegal,
-            HarmCategory.SELF_INFLICTED: self.self_inflicted,
-        }
+        attribute_mapping = self._get_category_dimension_mapping()
 
         return [category for category, dimension in attribute_mapping.items()
                 if dimension == Dimension.TOXIC]
