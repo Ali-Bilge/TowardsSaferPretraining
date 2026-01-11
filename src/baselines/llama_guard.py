@@ -5,6 +5,7 @@ Uses Meta's Llama Guard model for toxicity detection.
 """
 
 import logging
+import re
 import string
 from typing import Optional, List
 
@@ -57,7 +58,7 @@ class LlamaGuard:
         "S1": ["hate_violence"],          # Violent Crimes
         "S2": ["illegal"],                # Non-Violent Crimes
         "S3": ["sexual"],                 # Sex Crimes
-        "S4": ["sexual"],                 # Child Exploitation
+        "S4": ["sexual", "illegal"],       # Child Exploitation
         "S5": ["illegal"],                # Specialized Advice
         "S6": ["hate_violence"],          # Indiscriminate Weapons
         "S7": ["hate_violence", "ideological"],  # Hate
@@ -95,8 +96,7 @@ Provide your safety assessment for User in the above conversation:
     def __init__(
         self,
         model_name: str = MODEL_NAME,
-        device: Optional[str] = None,
-        use_topical: bool = False
+        device: Optional[str] = None
     ):
         """
         Initialize Llama Guard classifier.
@@ -104,23 +104,13 @@ Provide your safety assessment for User in the above conversation:
         Args:
             model_name: HuggingFace model name
             device: Device (cuda/cpu/mps)
-            use_topical: Whether to use topical classification (for backward compatibility)
         """
         if not LLAMA_GUARD_AVAILABLE:
             raise RuntimeError(
                 "Llama Guard requires: pip install torch transformers accelerate"
             )
 
-        self.use_topical = use_topical
-
-        logger.info(f"Loading Llama Guard from {model_name}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto" if torch.cuda.is_available() else None,
-        )
-
+        # Determine target device
         if device is None:
             if torch.cuda.is_available():
                 device = "cuda"
@@ -130,7 +120,17 @@ Provide your safety assessment for User in the above conversation:
                 device = "cpu"
 
         self.device = device
-        if not torch.cuda.is_available():
+
+        logger.info(f"Loading Llama Guard from {model_name}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if self.device == "cuda" else None,
+        )
+
+        # Move model to device only when device_map is not used (device_map handles placement automatically)
+        if self.device != "cuda":
             self.model.to(self.device)
 
         self.model.eval()
@@ -146,6 +146,11 @@ Provide your safety assessment for User in the above conversation:
         Returns:
             Tuple of (is_unsafe, violated_categories)
         """
+        # Validate input text
+        text = text.strip()
+        if not text:
+            raise ValueError("text cannot be empty or whitespace-only")
+
         # Format prompt
         prompt = self.PROMPT_TEMPLATE.substitute(text=text)
 
@@ -173,14 +178,36 @@ Provide your safety assessment for User in the above conversation:
             logger.warning("Empty response from Llama Guard")
             return False, []
 
-        first_line = lines[0].strip().lower()
-        is_unsafe = first_line == "unsafe"
+        # Normalize first line and extract safety label
+        first_line = lines[0].strip()
+        # Extract first meaningful token, clean it up
+        first_token = re.split(r'\s+', first_line)[0].lower().strip(string.punctuation)
+        # Check for unsafe variants using startswith (handles "unsafe:", "unsafe -", "unsafe (high)", etc.)
+        is_unsafe = first_token.startswith("unsafe")
 
         violated_categories = []
-        if is_unsafe and len(lines) > 1:
-            # Parse comma-separated categories (e.g., "S1,S7")
+
+        # Parse categories from first line after separator
+        if ':' in first_line or '-' in first_line:
+            separator_pattern = r'[:\-]\s*'
+            parts = re.split(separator_pattern, first_line, 1)
+            if len(parts) > 1:
+                category_part = parts[1].strip()
+                if category_part:
+                    # Split on commas and other delimiters
+                    categories = re.split(r'[,\s]+', category_part)
+                    violated_categories.extend([c.strip() for c in categories if c.strip()])
+
+        # Parse categories from second line if present
+        if len(lines) > 1:
             categories_line = lines[1].strip()
-            violated_categories = [c.strip() for c in categories_line.split(',')]
+            if categories_line:
+                # Split on commas and other delimiters
+                categories = re.split(r'[,\s]+', categories_line)
+                violated_categories.extend([c.strip() for c in categories if c.strip()])
+
+        # Filter out empty entries and duplicates
+        violated_categories = list(set(violated_categories))
 
         if is_unsafe and not violated_categories:
             logger.warning("Model returned 'unsafe' without category metadata")
@@ -250,9 +277,22 @@ Provide your safety assessment for User in the above conversation:
         """
         try:
             is_unsafe, violated_categories = self.classify_text(text)
-            return self.categories_to_label(violated_categories)
+            if violated_categories:
+                return self.categories_to_label(violated_categories)
+            elif is_unsafe:
+                # Model detected unsafe content but didn't specify categories
+                # Set all dimensions to TOXIC as conservative approach for unspecified toxicity
+                label = HarmLabel()
+                label.hate_violence = Dimension.TOXIC
+                label.ideological = Dimension.TOXIC
+                label.sexual = Dimension.TOXIC
+                label.illegal = Dimension.TOXIC
+                label.self_inflicted = Dimension.TOXIC
+                return label
+            else:
+                return HarmLabel()  # All safe
         except Exception as e:
-            logger.error(f"Error classifying text: {e}")
+            logger.error(f"Error classifying text: {e}", exc_info=True)
             return HarmLabel()
 
     def __call__(self, text: str) -> 'HarmLabel':

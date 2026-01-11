@@ -196,19 +196,44 @@ class HAVOCLoader:
                     # Assume stray tabs landed in the suffix; keep first column as Prefix,
                     # last column as PrefixLab, and stitch the middle back into Suffix.
                     prefix = row[0]
-                    prefix_lab_str = row[-1]
-                    suffix = "\t".join(row[1:-1])
-                    logger.warning(
-                        f"HAVOC TSV row {line_number}: expected 3 fields, got {len(row)}; "
-                        "reconstructed suffix by joining middle fields."
-                    )
+
+                    # Validate if the last column looks like a valid label (starts with '[')
+                    potential_label = row[-1].strip()
+                    if potential_label.startswith('['):
+                        try:
+                            # Try to parse as a valid label list to confirm it's not trailing garbage
+                            ast.literal_eval(potential_label)
+                            prefix_lab_str = row[-1]
+                            suffix = "\t".join(row[1:-1])
+                            logger.warning(
+                                f"HAVOC TSV row {line_number}: expected 3 fields, got {len(row)}; "
+                                "reconstructed suffix by joining middle fields."
+                            )
+                        except (ValueError, SyntaxError):
+                            # Last column starts with '[' but is not valid Python list - treat as garbage
+                            prefix_lab_str = ""
+                            suffix = "\t".join(row[1:])
+                            logger.warning(
+                                f"HAVOC TSV row {line_number}: expected 3 fields, got {len(row)}; "
+                                f"last column '{potential_label}' appears to be label-like but is invalid, "
+                                "treating entire tail as suffix."
+                            )
+                    else:
+                        # Last column doesn't look like a label - treat entire tail as suffix
+                        prefix_lab_str = ""
+                        suffix = "\t".join(row[1:])
+                        logger.warning(
+                            f"HAVOC TSV row {line_number}: expected 3 fields, got {len(row)}; "
+                            f"last column '{potential_label}' doesn't match expected label pattern, "
+                            "treating entire tail as suffix."
+                        )
                 else:  # len(row) == 1 or 2
                     prefix = row[0]
-                    suffix = ""
-                    prefix_lab_str = row[1] if len(row) == 2 else ""
+                    suffix = row[1] if len(row) == 2 else ""
+                    prefix_lab_str = ""
                     logger.warning(
                         f"HAVOC TSV row {line_number}: expected 3 fields, got {len(row)}; "
-                        "using empty suffix."
+                        "using empty label."
                     )
 
                 prefix_label = self._parse_label_list(prefix_lab_str)

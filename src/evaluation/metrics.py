@@ -16,13 +16,40 @@ def calculate_metrics(
     Args:
         predictions: List of predicted HarmLabel objects
         ground_truth: List of ground truth HarmLabel objects
-        dimension: Which dimension to evaluate ("toxic", "topical", or "all")
+        dimension: Which dimension to evaluate ("toxic" for toxicity classification,
+                  "topical" for topicality classification, or "all" for binary harm detection)
 
     Returns:
-        Dictionary with overall and per-harm metrics
+        Dictionary containing computed metrics with the following structure:
+        {
+            "overall": {
+                "precision": float,  # Overall precision score (0.0-1.0)
+                "recall": float,     # Overall recall score (0.0-1.0)
+                "f1": float          # Overall F1 score (0.0-1.0)
+            },
+            "per_harm": {
+                harm_label: {
+                    "precision": float,  # Per-harm precision score (0.0-1.0)
+                    "recall": float,     # Per-harm recall score (0.0-1.0)
+                    "f1": float          # Per-harm F1 score (0.0-1.0)
+                }
+                for each harm_label in the taxonomy
+            },
+            "dimension": str,       # The dimension parameter used ("toxic", "topical", or "all")
+            "total_samples": int    # Total number of prediction-ground_truth pairs evaluated
+        }
+
+        The dimension parameter controls which aspect of harm is evaluated:
+        - "toxic": Evaluates whether predictions correctly identify toxic content
+        - "topical": Evaluates whether predictions correctly identify topical content
+        - "all": Evaluates whether predictions correctly identify any harmful content (non-safe)
     """
     if len(predictions) != len(ground_truth):
         raise ValueError(f"Mismatch: {len(predictions)} predictions vs {len(ground_truth)} ground truth")
+
+    # Validate dimension parameter
+    if dimension not in ["toxic", "topical", "all"]:
+        raise ValueError(f"Invalid dimension '{dimension}'. Must be one of: 'toxic', 'topical', 'all'")
 
     # Overall metrics
     overall_tp, overall_fp, overall_fn = 0, 0, 0
@@ -36,11 +63,6 @@ def calculate_metrics(
     }
 
     harm_metrics = {short_name: {"tp": 0, "fp": 0, "fn": 0} for short_name in short_to_attr.keys()}
-    harm_attrs = short_to_attr
-
-    # Validate dimension parameter
-    if dimension not in ["toxic", "topical", "all"]:
-        raise ValueError(f"Invalid dimension '{dimension}'. Must be one of: 'toxic', 'topical', 'all'")
 
     # Calculate per-sample metrics
     for pred, truth in zip(predictions, ground_truth):
@@ -63,7 +85,7 @@ def calculate_metrics(
             overall_fn += 1
 
         # Per-harm metrics
-        for harm_code, attr_name in harm_attrs.items():
+        for harm_code, attr_name in short_to_attr.items():
             pred_dim = getattr(pred, attr_name)
             truth_dim = getattr(truth, attr_name)
 

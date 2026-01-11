@@ -15,10 +15,10 @@ import argparse
 import json
 
 
-def create_sample_jsonl(output_file: str, num_samples: int = 100, progress: bool = False):
+def create_sample_jsonl(output_file: str, num_samples: int = 100, progress: bool = False) -> None:
     """Create a sample JSONL file for testing."""
     # Input validation
-    if not isinstance(num_samples, int) or num_samples <= 0:
+    if not (isinstance(num_samples, int) and not isinstance(num_samples, bool)) or num_samples <= 0:
         raise ValueError(f"num_samples must be an integer greater than 0, got {num_samples}")
 
     if not output_file or not isinstance(output_file, str):

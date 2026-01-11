@@ -129,6 +129,14 @@ class DatasetAnalyzer:
             self.harmformer = HarmFormer(device=device)
             self.evaluator = None
         else:
+            # Validate api_key before creating TTPEvaluator
+            if not api_key:
+                raise ValueError("OpenAI API key is required when use_harmformer=False. Please provide a valid api_key parameter.")
+            if not isinstance(api_key, str) or not api_key.strip():
+                raise ValueError("OpenAI API key must be a non-empty string when use_harmformer=False.")
+            if not api_key.startswith("sk-"):
+                raise ValueError("OpenAI API key must start with 'sk-' when use_harmformer=False.")
+
             self.evaluator = TTPEvaluator(
                 api_key=api_key,
                 model=model,
@@ -230,15 +238,21 @@ class DatasetAnalyzer:
         # Overall comparison
         for result in results:
             percentages = result.get_percentages()
-            comparison["overall"][result.dataset_name] = percentages["overall"]
+            if result.total_samples == 0:
+                comparison["overall"][result.dataset_name] = 0  # or None, safe default
+            else:
+                comparison["overall"][result.dataset_name] = percentages.get("overall", 0)
 
             # Per-harm comparison
             for harm_code in _HARM_CODES:
                 if harm_code not in comparison["per_harm"]:
                     comparison["per_harm"][harm_code] = {}
 
-                comparison["per_harm"][harm_code][result.dataset_name] = \
-                    percentages["per_harm"][harm_code]
+                if result.total_samples == 0:
+                    comparison["per_harm"][harm_code][result.dataset_name] = 0  # or None, safe default
+                else:
+                    per_harm_data = percentages.get("per_harm", {})
+                    comparison["per_harm"][harm_code][result.dataset_name] = per_harm_data.get(harm_code, 0)
 
         return comparison
 
@@ -252,9 +266,15 @@ class DatasetAnalyzer:
         # Overall
         percentages = result.get_percentages()
         print("\nOverall Distribution:")
-        print(f"  Toxic:   {result.toxic_count:5d} ({percentages['overall']['toxic']:.2f}%)")
-        print(f"  Topical: {result.topical_count:5d} ({percentages['overall']['topical']:.2f}%)")
-        print(f"  Safe:    {result.safe_count:5d} ({percentages['overall']['safe']:.2f}%)")
+        if result.total_samples == 0:
+            print(f"  Toxic:   {result.toxic_count:5d} (0.00%)")
+            print(f"  Topical: {result.topical_count:5d} (0.00%)")
+            print(f"  Safe:    {result.safe_count:5d} (0.00%)")
+        else:
+            overall = percentages.get('overall', {'toxic': 0, 'topical': 0, 'safe': 0})
+            print(f"  Toxic:   {result.toxic_count:5d} ({overall.get('toxic', 0):.2f}%)")
+            print(f"  Topical: {result.topical_count:5d} ({overall.get('topical', 0):.2f}%)")
+            print(f"  Safe:    {result.safe_count:5d} ({overall.get('safe', 0):.2f}%)")
 
         # Per-harm
         print("\nPer-Harm Distribution:")

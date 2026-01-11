@@ -98,7 +98,7 @@ class TTPEvaluator:
         # Default GPT-4o pricing: ~$5 per 1M input tokens, ~$15 per 1M output tokens
         # Rough estimate assuming 70/30 input/output split (as of January 2024)
         default_cost_per_token = 0.000008
-        self.cost_per_token = cost_per_token or float(os.getenv("GPT_4O_COST_PER_TOKEN", default_cost_per_token))
+        self.cost_per_token = cost_per_token if cost_per_token is not None else float(os.getenv("GPT_4O_COST_PER_TOKEN", default_cost_per_token))
         if self.cost_per_token <= 0:
             raise ValueError("cost_per_token must be a positive number")
 
@@ -161,9 +161,18 @@ class TTPEvaluator:
                 )
 
                 self.total_requests += 1
-                self.total_tokens += response.usage.total_tokens
 
-                content = response.choices[0].message.content
+                # Safely extract token usage
+                if response.usage is not None and hasattr(response.usage, 'total_tokens'):
+                    self.total_tokens += response.usage.total_tokens
+
+                # Safely extract content
+                content = None
+                if (response.choices and len(response.choices) > 0 and
+                    response.choices[0].message and
+                    hasattr(response.choices[0].message, 'content')):
+                    content = response.choices[0].message.content
+
                 last_content = content
 
                 # Parse response

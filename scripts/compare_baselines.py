@@ -33,7 +33,8 @@ from pathlib import Path
 import argparse
 import json
 import logging
-from json import JSONDecodeError
+import csv
+import os
 from typing import List, Dict, Any
 
 try:
@@ -45,7 +46,6 @@ try:
     from src.evaluation.metrics import calculate_metrics
     from src.models import HarmFormer
     from src.baselines import PerspectiveAPI, LlamaGuard
-    from src.utils.taxonomy import HarmLabel
 except ImportError as e:
     print(f"Failed to import required modules: {e}")
     print("Make sure you're running from the project root or install the package with: pip install -e .")
@@ -84,6 +84,7 @@ def evaluate_classifier(
     else:
         iterator = samples
 
+    failed_count = 0
     for sample in iterator:
         try:
             predicted_label = classifier.predict(sample.text)
@@ -91,9 +92,12 @@ def evaluate_classifier(
             ground_truth.append(sample.label)
         except Exception as e:
             logger.error(f"Error predicting for sample {sample.url}: {e}")
-            # Use safe label as fallback
-            predictions.append(HarmLabel())
-            ground_truth.append(sample.label)
+            failed_count += 1
+            # Skip this sample entirely to avoid skewing metrics
+            continue
+
+    if failed_count > 0:
+        logger.warning(f"{failed_count} samples failed prediction and were excluded from evaluation")
 
     # Calculate metrics
     metrics = calculate_metrics(
@@ -105,6 +109,8 @@ def evaluate_classifier(
     return {
         "classifier": classifier_name,
         "total_samples": len(samples),
+        "failed_samples": failed_count,
+        "evaluated_samples": len(predictions),
         "metrics": metrics,
     }
 
@@ -164,8 +170,8 @@ def main():
     except FileNotFoundError as e:
         logger.error(f"Dataset file not found: {args.data_path}. Error: {e}")
         sys.exit(1)
-    except JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON in dataset file: {args.data_path}. Error: {e}")
+    except (UnicodeDecodeError, csv.Error, ValueError) as e:
+        logger.error(f"Failed to parse TSV dataset file: {args.data_path}. Error: {e}")
         sys.exit(1)
     except Exception as e:
         logger.exception(f"Unexpected error loading dataset from {args.data_path}: {e}")
@@ -250,8 +256,17 @@ def main():
         "results": results,
     }
 
-    with open(args.output, 'w') as f:
-        json.dump(output_data, f, indent=2)
+    # Create parent directory for output file
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    # Write output data with error handling
+    try:
+        with open(args.output, 'w') as f:
+            json.dump(output_data, f, indent=2)
+    except (OSError, IOError) as e:
+        raise OSError(f"Failed to write results to {args.output}: {e}")
 
     print(f"\n{'='*70}")
     print(f"Results saved to {args.output}")

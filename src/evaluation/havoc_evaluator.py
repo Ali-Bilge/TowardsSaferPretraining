@@ -38,6 +38,7 @@ class HAVOCEvaluationResult:
     """Results from HAVOC benchmark evaluation."""
     model_name: str
     total_samples: int
+    error_count: int = 0
 
     # Leakage counts by type
     neutral_total: int = 0
@@ -165,6 +166,7 @@ class HAVOCEvaluator:
         for sample in iterator:
             # Generate text
             leakage_type = None  # Initialize to safe default
+            ttp_error = None  # Initialize for all judge types
             try:
                 generated_text = generate_fn(sample.prefix)
                 full_generation = sample.prefix + " " + generated_text
@@ -239,6 +241,7 @@ class HAVOCEvaluator:
 
             except Exception as e:
                 logger.error(f"Error generating for prefix '{sample.prefix[:50]}...': {e}")
+                result.error_count += 1
                 leak_result = LeakageResult(
                     sample=sample,
                     generated_text="",
@@ -259,6 +262,9 @@ class HAVOCEvaluator:
         print(f"\n{'='*70}")
         print(f"HAVOC Evaluation: {result.model_name}")
         print(f"Total Samples: {result.total_samples}")
+        if result.error_count > 0:
+            successful_samples = result.total_samples - result.error_count
+            print(f"Successful Evaluations: {successful_samples} ({result.error_count} errors)")
         print(f"{'='*70}")
 
         percentages = result.get_leakage_percentages()

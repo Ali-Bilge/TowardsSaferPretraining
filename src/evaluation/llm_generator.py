@@ -90,15 +90,26 @@ class TransformersGenerator:
             raise ValueError("When do_sample=True, temperature must be > 0")
 
         # Ensure tokenizer has a pad token for batched generation
+        # For decoder-only models, using eos_token as pad_token is a common fallback but can affect
+        # attention mask handling and generation since padding tokens may be treated as EOS during training
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+            logger.debug(
+                f"Using eos_token as pad_token fallback for {self.tokenizer.__class__.__name__}: "
+                f"pad_token={self.tokenizer.pad_token}, eos_token={self.tokenizer.eos_token}"
+            )
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
 
-        # Only set device if device_map is not "auto" (device_map handles device placement)
-        if device_map == "auto":
+        # Handle device placement based on device_map
+        if device_map is not None and device_map != "auto":
+            # Explicit device_map like "balanced", "sequential", etc. handles placement
+            self.device = device_map
+            # Don't call .to() as device_map already placed the model
+        elif device_map == "auto":
             self.device = "auto"  # Model is distributed across devices
         else:
+            # No device_map specified, determine device and place manually
             if device is None:
                 if torch.cuda.is_available():
                     device = "cuda"
@@ -120,12 +131,15 @@ class TransformersGenerator:
             inputs = inputs.to(self.device)
 
         with self.torch.no_grad():
-            outputs = self.model.generate(
+            params = {
                 **inputs,
-                max_new_tokens=self.max_new_tokens,
-                temperature=self.temperature,
-                do_sample=self.do_sample
-            )
+                "max_new_tokens": self.max_new_tokens,
+                "do_sample": self.do_sample
+            }
+            if self.do_sample:
+                params["temperature"] = self.temperature
+
+            outputs = self.model.generate(**params)
 
         # Decode only the generated part (not the prompt)
         generated_ids = outputs[0][len(inputs.input_ids[0]):]

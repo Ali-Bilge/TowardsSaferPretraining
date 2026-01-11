@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -23,7 +24,7 @@ except Exception:
 from src.analysis import DatasetAnalyzer
 
 
-def load_samples_from_urls(url_file: str, limit: int = None) -> list[tuple[str, str]]:
+def load_samples_from_urls(url_file: str, limit: Optional[int] = None) -> list[tuple[str, str]]:
     """Load samples from URL file (placeholder - would need web scraping)."""
     print("Note: URL loading not implemented. Please provide JSONL with text content.")
     return []
@@ -33,7 +34,7 @@ def load_samples_from_jsonl(
     jsonl_file: str,
     text_field: str = "text",
     url_field: str = "url",
-    limit: int = None
+    limit: Optional[int] = None
 ) -> list[tuple[str, str]]:
     """Load samples from JSONL file."""
     samples = []

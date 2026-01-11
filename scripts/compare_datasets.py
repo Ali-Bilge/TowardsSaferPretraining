@@ -10,11 +10,11 @@ import json
 import sys
 from pathlib import Path
 
-from src.analysis import DatasetAnalyzer, AnalysisResult
-
 # Add the project root to Python path for robust package-relative importing
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
+
+from src.analysis import DatasetAnalyzer, AnalysisResult
 
 
 def load_analysis_result(filepath: str) -> AnalysisResult:

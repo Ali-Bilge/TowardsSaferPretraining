@@ -24,7 +24,7 @@ class PerspectiveAPI:
     """
     Wrapper for Google's Perspective API.
 
-    Maps Perspective toxicity scores to three-dimensional taxonomy.
+    Maps Perspective toxicity scores to four-dimensional taxonomy.
     Uses threshold-based classification.
 
     Example:
@@ -73,15 +73,19 @@ class PerspectiveAPI:
         self.languages = languages if languages is not None else ['en']
 
         # Build API client
-        self.client = discovery.build(
-            "commentanalyzer",
-            "v1alpha1",
-            developerKey=api_key,
-            discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
-            static_discovery=False,
-        )
-
-        logger.info("Initialized Perspective API client")
+        try:
+            self.client = discovery.build(
+                "commentanalyzer",
+                "v1alpha1",
+                developerKey=api_key,
+                discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
+                static_discovery=False,
+            )
+            logger.info("Initialized Perspective API client")
+        except Exception as e:
+            logger.error(f"Failed to initialize Perspective API client: {e}")
+            self.client = None
+            raise RuntimeError(f"Perspective API initialization failed: {e}")
 
     def get_scores(self, text: str, max_retries: int = 3) -> Optional[dict]:
         """
@@ -124,7 +128,7 @@ class PerspectiveAPI:
                 return scores
 
             except HttpError as e:
-                if e.resp.status == 429 or 500 <= e.resp.status < 600:  # Rate limit or server error
+                if e.resp.status == 429 or (500 <= e.resp.status < 600):  # Rate limit or server error
                     wait_time = 2 ** attempt
                     logger.warning(f"Rate limited or server error ({e.resp.status}), waiting {wait_time}s...")
                     time.sleep(wait_time)
@@ -147,7 +151,7 @@ class PerspectiveAPI:
         - TOXICITY, SEVERE_TOXICITY, INSULT, PROFANITY -> Hate/Violence (H)
         - IDENTITY_ATTACK -> Ideological Harm (IH)
         - SEXUALLY_EXPLICIT -> Sexual Content (SE)
-        - THREAT -> could be IL or H
+        - THREAT -> Hate/Violence (H)
 
         Args:
             scores: Dictionary of attribute scores
@@ -185,12 +189,12 @@ class PerspectiveAPI:
         elif sexually_explicit >= self.topical_threshold:
             label.sexual = Dimension.TOPICAL
 
-        # Classify Illegal Activities (IL) - use threat as proxy
+        # Classify Hate/Violence (H) - THREAT treated as hate/violence
         threat = scores.get("THREAT", 0.0)
         if threat >= self.toxic_threshold:
-            label.illegal = Dimension.TOXIC
+            label.hate_violence = Dimension.TOXIC
         elif threat >= self.topical_threshold:
-            label.illegal = Dimension.TOPICAL
+            label.hate_violence = Dimension.TOPICAL
 
         # Note: Perspective doesn't have good mapping for Self-Inflicted (SI)
         # We leave it as SAFE
