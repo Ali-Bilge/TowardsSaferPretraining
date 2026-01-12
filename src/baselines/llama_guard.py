@@ -7,6 +7,7 @@ Uses Meta's Llama Guard model for toxicity detection.
 import logging
 import re
 import string
+import os
 from typing import Optional, List
 
 from ..utils.taxonomy import HarmLabel, Dimension
@@ -121,10 +122,14 @@ Provide your safety assessment for User in the above conversation:
 
         self.device = device
 
+        # HuggingFace auth: support both common env var names.
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
+
         logger.info(f"Loading Llama Guard from {model_name}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)  # type: ignore
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)  # type: ignore
         self.model = AutoModelForCausalLM.from_pretrained(  # type: ignore
             model_name,
+            token=hf_token,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,  # type: ignore
             device_map="auto" if self.device == "cuda" else None,
         )

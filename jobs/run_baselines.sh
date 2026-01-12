@@ -70,11 +70,15 @@ if [ -n "${OPENAI_API_KEY:-}" ]; then
   EXTRA_ARGS+=(--openai-key "$OPENAI_API_KEY")
 fi
 
-# Llama Guard is often gated (Meta terms acceptance required). Only run if explicitly enabled.
-if [ "${ENABLE_LLAMA_GUARD:-0}" = "1" ]; then
+# Llama Guard is often gated (Meta terms acceptance required).
+# Under repo-parity runs, enable it automatically when an HF token is present,
+# but allow opt-out.
+if [ "${DISABLE_LLAMA_GUARD:-0}" = "1" ]; then
+  echo "Info: skipping llama_guard baseline (DISABLE_LLAMA_GUARD=1)." >&2
+elif [ -n "${HUGGINGFACE_HUB_TOKEN:-}" ] || [ -n "${HF_TOKEN:-}" ]; then
   BASELINES+=("llama_guard")
 else
-  echo "Info: skipping llama_guard baseline (set ENABLE_LLAMA_GUARD=1 in .env to enable)." >&2
+  echo "Info: skipping llama_guard baseline (no HF token found)." >&2
 fi
 
 if [ -n "${PERSPECTIVE_API_KEY:-}" ]; then

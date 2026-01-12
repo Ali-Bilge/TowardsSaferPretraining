@@ -137,7 +137,8 @@ class HAVOCLoader:
         label_str = (label_str or "").strip()
         # Some rows contain "[]" placeholders; treat as unknown and default safe.
         if label_str in {"[]", ""}:
-            logger.warning(f"Invalid label list '{label_str}', defaulting to all safe")
+            # This is common in the released TSVs; don't spam warnings.
+            logger.debug(f"Invalid label list '{label_str}', defaulting to all safe")
             return HarmLabel()
 
         try:
@@ -146,11 +147,12 @@ class HAVOCLoader:
 
             # Handle empty or malformed labels
             if not labels or len(labels) != 5:
-                logger.warning(f"Invalid label list '{label_str}', defaulting to all safe")
+                logger.debug(f"Invalid label list '{label_str}', defaulting to all safe")
                 return HarmLabel()  # Returns all safe
 
             return HarmLabel.from_list(labels)
         except Exception as e:
+            # Keep as warning: truly malformed labels are unexpected.
             logger.warning(f"Failed to parse label '{label_str}': {e}. Defaulting to all safe", exc_info=True)
             return HarmLabel()  # Returns all safe
 
@@ -172,7 +174,11 @@ class HAVOCLoader:
         # Use csv.reader instead of DictReader for robustness: havoc.tsv can contain
         # a small number of malformed rows (e.g., extra tabs). We reconstruct
         # Prefix/Suffix/PrefixLab in a best-effort way and skip rows we can't parse.
-        with open(self.filepath, 'r', encoding='utf-8', newline='') as f:
+        # NOTE: we keep Python's default CSV quoting behavior here because the released TSVs
+        # contain quote characters and the corresponding `havoc_modeleval.tsv` is parsed with
+        # the same behavior. A very small number of rows contain unbalanced quotes; we handle
+        # those with best-effort reconstruction below.
+        with open(self.filepath, 'r', encoding='utf-8', errors='replace', newline='') as f:
             reader = csv.reader(f, delimiter='\t')
             try:
                 header = next(reader)
@@ -287,8 +293,12 @@ class HAVOCLoader:
         # First pass: read model evaluations into lookup dict and cache rows
         assert self.modeleval_filepath is not None, "modeleval_filepath should not be None"
         model_eval_lookup = {}
+        duplicate_keys = 0
         cached_eval_rows = []
-        with open(self.modeleval_filepath, 'r', encoding='utf-8') as f:
+        # For `havoc_modeleval.tsv`, keep the default CSV quoting behavior. This file contains
+        # JSON-like strings in some columns, and disabling quoting can misalign columns due to
+        # embedded tabs/newlines.
+        with open(self.modeleval_filepath, 'r', encoding='utf-8', errors='replace', newline='') as f:
             reader = csv.DictReader(f, delimiter='\t')
             for row in reader:
                 cached_eval_rows.append(row)
@@ -297,8 +307,16 @@ class HAVOCLoader:
                 if prefix or suffix:  # Skip completely empty rows
                     key = self._create_sample_key(prefix, suffix)
                     if key in model_eval_lookup:
-                        logger.warning(f"Duplicate key found in model evaluations: {key[:100]}...")
+                        # Keep the first occurrence for determinism; count duplicates for summary.
+                        duplicate_keys += 1
+                        continue
                     model_eval_lookup[key] = row
+
+        if duplicate_keys:
+            logger.warning(
+                f"Duplicate key(s) found in model evaluations: {duplicate_keys} duplicates; "
+                "kept first occurrence for deterministic matching."
+            )
 
         # Second pass: match and merge with samples
         matched_count = 0

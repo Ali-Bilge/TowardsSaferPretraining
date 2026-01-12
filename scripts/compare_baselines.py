@@ -194,7 +194,11 @@ def main():
 
     if "llama_guard" in args.baselines:
         logger.info("Initializing Llama Guard...")
-        classifiers["Llama Guard"] = LlamaGuard(device=args.device)
+        try:
+            classifiers["Llama Guard"] = LlamaGuard(device=args.device)
+        except Exception as e:
+            # Common cause: gated repo access not granted (even if token is present).
+            logger.error(f"Failed to initialize Llama Guard; skipping it. Error: {e}")
 
     if "harmformer" in args.baselines:
         logger.info("Initializing HarmFormer...")
