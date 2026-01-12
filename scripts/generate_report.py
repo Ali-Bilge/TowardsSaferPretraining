@@ -53,7 +53,7 @@ try:
          overall.get("f1", "N/A")],
     ]
 except RuntimeError as e:
-    print(f"Warning: Could not load TTP results ({e}). Using placeholder data.")
+    print(f"Warning: Could not load TTP results ({e}).")
     table3_data = [
         ["Hate & Violence", "N/A", "N/A", "N/A"],
         ["Ideological Harm", "N/A", "N/A", "N/A"],
@@ -66,14 +66,29 @@ print(tabulate(table3_data, headers=["Harm", "Precision", "Recall", "F1"], table
 
 # Table 6: HarmFormer Quality
 print("\nTable 6: HarmFormer Quality (Toxic Dimension)")
-table6_data = [
-    ["Hate & Violence", 0.59, 0.44, 0.51],
-    ["Ideological Harm", 0.64, 0.57, 0.61],
-    ["Sexual", 0.92, 0.88, 0.91],
-    ["Illegal", 0.77, 0.75, 0.76],
-    ["Self-Inflicted", 0.88, 0.88, 0.88],
-    ["Toxic (Overall)", 0.88, 0.81, 0.85],
-]
+try:
+    harmformer_results = load_json("results/harmformer/harmformer_results.json")
+    metrics = harmformer_results.get("metrics", {}).get("per_harm", {})
+    overall = harmformer_results.get("metrics", {}).get("overall", {})
+
+    table6_data = [
+        ["Hate & Violence", metrics.get("H", {}).get("precision", "N/A"), metrics.get("H", {}).get("recall", "N/A"), metrics.get("H", {}).get("f1", "N/A")],
+        ["Ideological Harm", metrics.get("IH", {}).get("precision", "N/A"), metrics.get("IH", {}).get("recall", "N/A"), metrics.get("IH", {}).get("f1", "N/A")],
+        ["Sexual", metrics.get("SE", {}).get("precision", "N/A"), metrics.get("SE", {}).get("recall", "N/A"), metrics.get("SE", {}).get("f1", "N/A")],
+        ["Illegal", metrics.get("IL", {}).get("precision", "N/A"), metrics.get("IL", {}).get("recall", "N/A"), metrics.get("IL", {}).get("f1", "N/A")],
+        ["Self-Inflicted", metrics.get("SI", {}).get("precision", "N/A"), metrics.get("SI", {}).get("recall", "N/A"), metrics.get("SI", {}).get("f1", "N/A")],
+        ["Toxic (Overall)", overall.get("precision", "N/A"), overall.get("recall", "N/A"), overall.get("f1", "N/A")],
+    ]
+except RuntimeError as e:
+    print(f"Warning: Could not load HarmFormer results ({e}).")
+    table6_data = [
+        ["Hate & Violence", "N/A", "N/A", "N/A"],
+        ["Ideological Harm", "N/A", "N/A", "N/A"],
+        ["Sexual", "N/A", "N/A", "N/A"],
+        ["Illegal", "N/A", "N/A", "N/A"],
+        ["Self-Inflicted", "N/A", "N/A", "N/A"],
+        ["Toxic (Overall)", "N/A", "N/A", "N/A"],
+    ]
 print(tabulate(table6_data, headers=["Harm", "Precision", "Recall", "F1"], tablefmt="grid"))
 
 # Table 10: HAVOC Leakage
@@ -152,18 +167,3 @@ if havoc_files:
         print("No valid HAVOC results found.")
 else:
     print("No HAVOC results found. Run Phase 2 first.")
-
-print("\n" + "=" * 80)
-print("COST SUMMARY")
-print("=" * 80)
-print("Phase 1 (TTP Eval):          ~$2-5")
-print("Phase 1 (HarmFormer):        $0")
-print("Phase 1 (Baselines):         ~$0-2")
-print("Phase 2 (HAVOC):             $0")
-print("Phase 3 (Dataset Analysis):  $0")
-print("Phase 4 (Training - Optional): ~$30-40")
-print("-" * 80)
-print("Total (without training):    ~$2-7")
-print("Total (with training):       ~$32-47")
-print("=" * 80)
-

@@ -43,10 +43,11 @@ try:
     from tqdm import tqdm  # type: ignore
 
     from src.data_loaders import TTPEvalLoader, TTPEvalSample
-    from src.evaluation.metrics import calculate_metrics
+    from src.benchmarks.metrics import calculate_metrics
     from src.models import HarmFormer
-    from src.baselines import PerspectiveAPI, LlamaGuard
+    from src.clients import PerspectiveAPI, LlamaGuard
     from src.utils.codecarbon import maybe_track_emissions
+    from src.clients.ttp_gemini import GeminiTTPEvaluator
 except ImportError as e:
     print(f"Failed to import required modules: {e}")
     print("Make sure you're running from the project root or install the package with: pip install -e .")
@@ -128,7 +129,7 @@ def main():
     parser.add_argument(
         "--baselines",
         nargs="+",
-        choices=["perspective", "llama_guard", "harmformer", "ttp"],
+        choices=["perspective", "llama_guard", "harmformer", "ttp", "gemini"],
         default=["perspective", "llama_guard", "harmformer"],
         help="Baselines to compare"
     )
@@ -139,6 +140,15 @@ def main():
     parser.add_argument(
         "--openai-key",
         help="OpenAI API key (required if using ttp)"
+    )
+    parser.add_argument(
+        "--gemini-key",
+        help="Google AI Studio API key (required if using gemini baseline)"
+    )
+    parser.add_argument(
+        "--gemini-model",
+        default=os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"),
+        help="Gemini model name (default: GEMINI_MODEL env var or gemini-2.0-flash)"
     )
     parser.add_argument(
         "--limit",
@@ -162,6 +172,8 @@ def main():
         parser.error("--perspective-key required when using perspective baseline")
     if "ttp" in args.baselines and not args.openai_key:
         parser.error("--openai-key required when using ttp baseline")
+    if "gemini" in args.baselines and not args.gemini_key:
+        parser.error("--gemini-key required when using gemini baseline")
 
     # Load dataset
     logger.info(f"Loading TTP-Eval from {args.data_path}...")
@@ -206,8 +218,15 @@ def main():
 
     if "ttp" in args.baselines:
         logger.info("Initializing TTP (GPT-4)...")
-        from src.evaluation import TTPEvaluator  # type: ignore
+        from src.clients import TTPEvaluator  # type: ignore
         classifiers["TTP (GPT-4)"] = TTPEvaluator(api_key=args.openai_key)
+
+    if "gemini" in args.baselines:
+        logger.info(f"Initializing TTP (Gemini: {args.gemini_model})...")
+        classifiers[f"TTP (Gemini: {args.gemini_model})"] = GeminiTTPEvaluator(
+            api_key=args.gemini_key,
+            model=args.gemini_model,
+        )
 
     # Evaluate each classifier
     results = []

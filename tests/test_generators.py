@@ -1,7 +1,7 @@
 """Tests for LLM generators."""
 
 import pytest
-from src.evaluation.llm_generator import create_generator
+from src.benchmarks.generators import create_generator
 
 
 class TestGeneratorFactory:
@@ -19,7 +19,7 @@ class TestTransformersGenerator:
     @pytest.mark.requires_model
     def test_transformers_initialization(self):
         """Test Transformers generator initialization."""
-        from src.evaluation.llm_generator import TransformersGenerator
+        from src.benchmarks.generators import TransformersGenerator
 
         generator = TransformersGenerator(
             model_name="gpt2",  # Small model for testing

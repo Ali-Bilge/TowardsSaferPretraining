@@ -16,7 +16,7 @@ if os.getenv("RUN_INTEGRATION_TESTS") != "1":
 @pytest.fixture
 def transformers_generator():
     """Fixture that provides a transformers generator and cleans up after use."""
-    from src.evaluation.llm_generator import create_generator
+    from src.benchmarks.generators import create_generator
 
     gen = create_generator("transformers", "gpt2")
     yield gen
@@ -27,7 +27,8 @@ def test_core_components_importable():
     # Arrange / Act
     import src  # noqa: F401
     from src.data_loaders import HAVOCLoader, TTPEvalLoader  # noqa: F401
-    from src.evaluation import HAVOCEvaluator, TTPEvaluator  # noqa: F401
+    from src.benchmarks import HAVOCBenchmark  # noqa: F401
+    from src.clients import TTPEvaluator  # noqa: F401
 
 
 @pytest.mark.requires_model

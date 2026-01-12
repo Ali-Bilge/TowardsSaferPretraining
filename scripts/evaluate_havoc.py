@@ -40,8 +40,8 @@ try:
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
     from src.data_loaders import HAVOCLoader
-    from src.evaluation import HAVOCEvaluator
-    from src.evaluation.llm_generator import create_generator
+    from src.benchmarks import HAVOCBenchmark
+    from src.benchmarks.generators import create_generator
 except ImportError as e:
     attempted_path = Path(__file__).parent.parent
     error_msg = (
@@ -194,7 +194,7 @@ def _initialize_evaluator(args):
     if args.judge == "harmformer":
         print("Using HarmFormer as judge (fast, not paper-faithful)...")
         try:
-            evaluator = HAVOCEvaluator(judge="harmformer", device=args.device)
+            evaluator = HAVOCBenchmark(judge="harmformer", device=args.device)
         except Exception as e:
             print(f"Error creating HarmFormer evaluator: {e}")
             sys.exit(1)
@@ -207,7 +207,7 @@ def _initialize_evaluator(args):
         print(f"Using TTP ({args.ttp_model}) as judge (paper-faithful Tier-1)...")
         try:
             api_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
-            evaluator = HAVOCEvaluator(
+            evaluator = HAVOCBenchmark(
                 judge="ttp",
                 api_key=api_key,
                 ttp_model=args.ttp_model,

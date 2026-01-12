@@ -11,11 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class TransformersGenerator:
-    """
-    Text generator using HuggingFace Transformers (local inference).
-
-    Requires: pip install torch transformers accelerate
-    """
+    """Text generator using HuggingFace Transformers (local inference)."""
 
     def __init__(
         self,
@@ -27,31 +23,18 @@ class TransformersGenerator:
         torch_dtype: Optional[str] = None,
         device_map: Optional[str] = None,
         low_cpu_mem_usage: bool = False,
-        trust_remote_code: bool = False
+        trust_remote_code: bool = False,
     ):
-        """
-        Initialize Transformers generator.
-
-        Args:
-            model_name: HuggingFace model name
-            max_new_tokens: Max tokens to generate
-            temperature: Sampling temperature
-            device: Device (cuda/cpu/mps)
-            torch_dtype: Data type for model weights (e.g., "float16", "bfloat16")
-            device_map: Device mapping strategy ("auto" for multi-GPU)
-            low_cpu_mem_usage: Reduce CPU memory during loading
-            trust_remote_code: Trust remote code in model files
-        """
         try:
             import torch  # type: ignore
             from transformers import AutoTokenizer, AutoModelForCausalLM  # type: ignore
+
             self.torch = torch
         except ImportError:
             raise RuntimeError("Install: pip install torch transformers accelerate")
 
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
-        # If temperature is set to non-zero and do_sample wasn't explicitly enabled, enable sampling
         if temperature > 0.0 and not do_sample:
             self.do_sample = True
         else:
@@ -60,9 +43,8 @@ class TransformersGenerator:
         self.device_map = device_map
         self.low_cpu_mem_usage = low_cpu_mem_usage
         self.trust_remote_code = trust_remote_code
-        self.device: str  # Will be set below
+        self.device: str
 
-        # Convert torch_dtype string to torch dtype if provided
         torch_dtype_param = None
         if torch_dtype:
             if torch_dtype == "float16":
@@ -74,48 +56,37 @@ class TransformersGenerator:
             else:
                 raise ValueError(f"Unsupported torch_dtype: {torch_dtype}")
 
-        # Prepare loading kwargs
         tokenizer_kwargs: Dict[str, Any] = {"trust_remote_code": trust_remote_code}
-        model_kwargs: Dict[str, Any] = {
-            "trust_remote_code": trust_remote_code,
-            "low_cpu_mem_usage": low_cpu_mem_usage
-        }
+        model_kwargs: Dict[str, Any] = {"trust_remote_code": trust_remote_code, "low_cpu_mem_usage": low_cpu_mem_usage}
 
         if torch_dtype_param is not None:
             model_kwargs["torch_dtype"] = torch_dtype_param
-
         if device_map:
             model_kwargs["device_map"] = device_map
 
-        logger.info(f"Loading {model_name}...")
+        logger.info("Loading %s...", model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, **tokenizer_kwargs)
 
-        # Validate sampling parameters
         if self.do_sample and self.temperature <= 0:
             raise ValueError("When do_sample=True, temperature must be > 0")
 
-        # Ensure tokenizer has a pad token for batched generation
-        # For decoder-only models, using eos_token as pad_token is a common fallback but can affect
-        # attention mask handling and generation since padding tokens may be treated as EOS during training
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.padding_side = "left"
             logger.debug(
-                f"Using eos_token as pad_token fallback for {self.tokenizer.__class__.__name__}: "
-                f"pad_token={self.tokenizer.pad_token}, eos_token={self.tokenizer.eos_token}, padding_side=left"
+                "Using eos_token as pad_token fallback for %s: pad_token=%s eos_token=%s padding_side=left",
+                self.tokenizer.__class__.__name__,
+                self.tokenizer.pad_token,
+                self.tokenizer.eos_token,
             )
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
 
-        # Handle device placement based on device_map
         if device_map is not None and device_map != "auto":
-            # Explicit device_map like "balanced", "sequential", etc. handles placement
             self.device = device_map
-            # Don't call .to() as device_map already placed the model
         elif device_map == "auto":
-            self.device = "auto"  # Model is distributed across devices
+            self.device = "auto"
         else:
-            # No device_map specified, determine device and place manually
             if device is None:
                 if torch.cuda.is_available():
                     device = "cuda"
@@ -127,67 +98,40 @@ class TransformersGenerator:
             self.model.to(self.device)  # type: ignore
 
         self.model.eval()
-
-        logger.info(f"Model loaded on {self.device}")
+        logger.info("Model loaded on %s", self.device)
 
     def generate(self, prompt: str) -> str:
-        """Generate text from prompt."""
         inputs = self.tokenizer(prompt, return_tensors="pt")
         if self.device != "auto":
             inputs = inputs.to(self.device)
 
         with self.torch.no_grad():
-            params = {
-                **inputs,
-                "max_new_tokens": self.max_new_tokens,
-                "do_sample": self.do_sample
-            }
+            params = {**inputs, "max_new_tokens": self.max_new_tokens, "do_sample": self.do_sample}
             if self.do_sample:
                 params["temperature"] = self.temperature
-
             outputs = self.model.generate(**params)
 
-        # Decode only the generated part (not the prompt)
-        generated_ids = outputs[0][len(inputs.input_ids[0]):]
+        generated_ids = outputs[0][len(inputs.input_ids[0]) :]
         generated_text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
-
         return generated_text.strip()
 
     def __call__(self, prompt: str) -> str:
-        """Make generator callable."""
         return self.generate(prompt)
 
     def cleanup(self) -> None:
-        """Clean up model resources."""
-        if hasattr(self, 'model'):
+        if hasattr(self, "model"):
             del self.model
-        if hasattr(self, 'tokenizer'):
+        if hasattr(self, "tokenizer"):
             del self.tokenizer
-        # Clear CUDA cache if available
-        if hasattr(self, 'torch') and self.torch.cuda.is_available():
+        if hasattr(self, "torch") and self.torch.cuda.is_available():
             self.torch.cuda.empty_cache()
 
 
 def create_generator(backend: str, model_name: str, **kwargs):
-    """
-    Factory function to create generators.
-
-    Args:
-        backend: "transformers" (HuggingFace Transformers)
-        model_name: HuggingFace model name
-        **kwargs: Additional arguments for generator. For transformers backend,
-            if max_tokens is passed and max_new_tokens is not, max_tokens will be
-            mapped to max_new_tokens for backwards compatibility before constructing
-            the TransformersGenerator.
-
-    Returns:
-        Generator instance
-    """
+    """Factory to create generators."""
     if backend == "transformers":
-        # Backwards-compatible arg alias: scripts may pass max_tokens, but the
-        # generator uses max_new_tokens.
         if "max_tokens" in kwargs and "max_new_tokens" not in kwargs:
             kwargs["max_new_tokens"] = kwargs.pop("max_tokens")
         return TransformersGenerator(model_name, **kwargs)
-    else:
-        raise ValueError(f"Unknown backend: {backend}. Use 'transformers' for HPC clusters.")
+    raise ValueError("Unknown backend. Use 'transformers' for HPC clusters.")
+

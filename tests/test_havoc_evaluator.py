@@ -3,8 +3,8 @@
 import pytest  # type: ignore
 import os
 from pathlib import Path
-from src.evaluation import HAVOCEvaluator
-from src.evaluation.havoc_evaluator import HAVOCEvaluationResult
+from src.benchmarks import HAVOCBenchmark as HAVOCEvaluator
+from src.benchmarks.havoc import HAVOCEvaluationResult
 from src.data_loaders import HAVOCLoader
 
 

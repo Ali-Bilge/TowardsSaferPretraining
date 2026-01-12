@@ -1,7 +1,7 @@
 """Tests for evaluation metrics."""
 
 import pytest
-from src.evaluation.metrics import calculate_metrics
+from src.benchmarks.metrics import calculate_metrics
 from src.utils.taxonomy import HarmLabel, Dimension
 
 

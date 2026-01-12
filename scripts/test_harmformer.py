@@ -25,7 +25,7 @@ try:
     from tqdm import tqdm  # type: ignore
     from src.data_loaders import TTPEvalLoader, TTPEvalSample
     from src.models import HarmFormer
-    from src.evaluation.metrics import calculate_metrics
+    from src.benchmarks.metrics import calculate_metrics
     from src.utils.taxonomy import HarmLabel, Dimension
     from src.utils.codecarbon import maybe_track_emissions
 except ImportError as e:

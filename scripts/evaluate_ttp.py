@@ -33,8 +33,9 @@ except (OSError, UnicodeDecodeError) as e:
     warnings.warn(f"Failed to load .env file: {e}", UserWarning)
 
 from src.data_loaders import TTPEvalLoader
-from src.evaluation import TTPEvaluator, calculate_metrics, print_metrics
-from src.evaluation.ttp_evaluator import TTPResult
+from src.clients import OpenAITTPClient
+from src.benchmarks import calculate_metrics, print_metrics
+from src.clients.ttp_openai import TTPResult
 from src.utils.taxonomy import HarmLabel
 from src.utils.codecarbon import maybe_track_emissions
 
@@ -73,7 +74,7 @@ def main():
 
     print(f"Evaluating {len(samples)} samples with {args.model}...")
 
-    evaluator = TTPEvaluator(api_key=args.api_key, model=args.model)
+    evaluator = OpenAITTPClient(api_key=args.api_key, model=args.model)
 
     # Evaluate
     results = []
@@ -136,7 +137,6 @@ def main():
     print(f"  Total requests: {stats['total_requests']}")
     print(f"  Failed requests: {stats['failed_requests']}")
     print(f"  Total tokens: {stats['total_tokens']}")
-    print(f"  Estimated cost: ${stats['estimated_cost_usd']:.2f}")
 
     # Save results
     if args.output:
