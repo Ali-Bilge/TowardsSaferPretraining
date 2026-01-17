@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=table4_api
+#SBATCH --job-name=ttp_eval_api
 #SBATCH --partition=rome
 #SBATCH --time=08:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
-#SBATCH --output=logs/table4_api_%j.out
-#SBATCH --error=logs/table4_api_%j.err
+#SBATCH --output=logs/ttp_eval_api_%j.out
+#SBATCH --error=logs/ttp_eval_api_%j.err
 
 set -euo pipefail
 

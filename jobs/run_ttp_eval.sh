@@ -41,6 +41,19 @@ source venv/bin/activate || {
     exit 1
 }
 
+# Load API keys from .env if present, otherwise from example.env.
+if [ -f ".env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ".env"
+  set +a
+elif [ -f "example.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "example.env"
+  set +a
+fi
+
 # Create output directory
 mkdir -p results/ttp_eval
 mkdir -p results/codecarbon
@@ -49,12 +62,19 @@ mkdir -p results/codecarbon
 export CODECARBON_OUTPUT_DIR="${CODECARBON_OUTPUT_DIR:-$PROJECT_DIR/results/codecarbon}"
 export CODECARBON_EXPERIMENT_ID="${CODECARBON_EXPERIMENT_ID:-${SLURM_JOB_ID:-}}"
 
-# Run TTP evaluation on full TTP-Eval dataset
-if python scripts/evaluate_ttp.py \
+# Ensure required keys exist
+if [ -z "${OPENAI_API_KEY:-}" ]; then
+  echo "Error: OPENAI_API_KEY is required for openai_ttp setup" >&2
+  exit 1
+fi
+
+# Run TTP evaluation on full TTP-Eval dataset (Table 3)
+if python scripts/evaluate_ttp_eval.py \
   --data-path data/TTP-Eval/TTPEval.tsv \
-  --model gpt-4o \
-  --output results/ttp_eval/ttp_results.json \
-  --dimension toxic; then
+  --setups openai_ttp \
+  --openai-model gpt-4o \
+  --dimension toxic \
+  --output results/ttp_eval/ttp_results.json; then
     echo "TTP Evaluation Complete!"
     echo "Results saved to: results/ttp_eval/ttp_results.json"
 else
