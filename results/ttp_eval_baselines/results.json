@@ -1,0 +1,63 @@
+{
+  "evaluation_config": {
+    "dataset": "data/TTP-Eval/TTPEval.tsv",
+    "total_samples": 393,
+    "dimension": "toxic",
+    "setups": [
+      "Perspective API"
+    ],
+    "device": "cuda",
+    "openai_model": "gpt-4o",
+    "openrouter_model": "openai/gpt-4o",
+    "gemini_model": "gemini-2.0-flash",
+    "perspective_threshold": 0.4,
+    "perspective_chunk_chars": 500,
+    "local_models": [],
+    "dtype": "auto",
+    "quantization": "none"
+  },
+  "results": [
+    {
+      "setup": "Perspective API",
+      "total_samples": 393,
+      "failed_samples": 0,
+      "evaluated_samples": 393,
+      "metrics": {
+        "overall": {
+          "precision": 0.7962962962962963,
+          "recall": 0.45263157894736844,
+          "f1": 0.5771812080536912
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.46296296296296297,
+            "recall": 0.8064516129032258,
+            "f1": 0.5882352941176471
+          },
+          "IH": {
+            "precision": 0.35185185185185186,
+            "recall": 0.5428571428571428,
+            "f1": 0.42696629213483145
+          },
+          "SE": {
+            "precision": 0.4074074074074074,
+            "recall": 0.5789473684210527,
+            "f1": 0.47826086956521735
+          },
+          "IL": {
+            "precision": 0.018518518518518517,
+            "recall": 0.07142857142857142,
+            "f1": 0.029411764705882353
+          },
+          "SI": {
+            "precision": 0.05555555555555555,
+            "recall": 0.25,
+            "f1": 0.0909090909090909
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 393
+      }
+    }
+  ]
+}

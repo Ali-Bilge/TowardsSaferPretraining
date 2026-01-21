@@ -1,0 +1,22 @@
+Loading checkpoint shards:   0%|          | 0/12 [00:00<?, ?it/s]Loading checkpoint shards:   8%|▊         | 1/12 [00:02<00:28,  2.57s/it]Loading checkpoint shards:  17%|█▋        | 2/12 [00:05<00:26,  2.62s/it]Loading checkpoint shards:  25%|██▌       | 3/12 [00:07<00:23,  2.61s/it]Loading checkpoint shards:  33%|███▎      | 4/12 [00:10<00:20,  2.60s/it]Loading checkpoint shards:  42%|████▏     | 5/12 [00:13<00:18,  2.61s/it]Loading checkpoint shards:  50%|█████     | 6/12 [00:15<00:15,  2.63s/it]Loading checkpoint shards:  58%|█████▊    | 7/12 [00:18<00:13,  2.66s/it]Loading checkpoint shards:  67%|██████▋   | 8/12 [00:21<00:10,  2.65s/it]Loading checkpoint shards:  75%|███████▌  | 9/12 [00:22<00:07,  2.38s/it]Loading checkpoint shards:  83%|████████▎ | 10/12 [00:24<00:04,  2.15s/it]Loading checkpoint shards:  92%|█████████▏| 11/12 [00:30<00:03,  3.41s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:30<00:00,  2.44s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:30<00:00,  2.58s/it]
+Some parameters are on the meta device because they were offloaded to the cpu.
+[codecarbon WARNING @ 03:50:36] Multiple instances of codecarbon are allowed to run at the same time.
+The following generation flags are not valid and may be ignored: ['temperature']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+Traceback (most recent call last):
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/src/clients/ttp_local.py", line 96, in __init__
+    import bitsandbytes  # noqa: F401  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'bitsandbytes'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/scripts/evaluate_ttp_eval.py", line 206, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/scripts/evaluate_ttp_eval.py", line 166, in main
+    TransformersTTPClient(
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/src/clients/ttp_local.py", line 98, in __init__
+    raise RuntimeError(
+RuntimeError: Requested quantization but bitsandbytes is not installed. Install with: pip install bitsandbytes
+Error: Table 4 local LLM evaluation failed (LLaMa 32B)

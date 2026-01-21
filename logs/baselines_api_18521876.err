@@ -1,0 +1,2 @@
+[codecarbon WARNING @ 02:27:07] Multiple instances of codecarbon are allowed to run at the same time.
+[2026-01-21T02:28:57.038] error: *** JOB 18521876 ON tcn485 CANCELLED AT 2026-01-21T02:28:57 DUE to SIGNAL Terminated ***

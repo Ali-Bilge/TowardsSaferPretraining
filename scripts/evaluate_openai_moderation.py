@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data_loaders import OpenAIModerationLoader, OpenAIModerationSample  # noqa: E402
 from src.benchmarks.metrics import calculate_metrics  # noqa: E402
-from src.clients import PerspectiveAPI, LlamaGuard  # noqa: E402
+from src.clients import PerspectiveAPI, LlamaGuard, OpenRouterTTPClient  # noqa: E402
 from src.clients.ttp_openai import OpenAITTPClient  # noqa: E402
 from src.models import HarmFormer  # noqa: E402
 from src.utils.codecarbon import maybe_track_emissions  # noqa: E402
@@ -82,9 +82,11 @@ def main() -> int:
             "llama_guard_zero_shot",
             "llama_guard_few_shot",
             "ttp",
+            "ttp_openrouter",
             "harmformer",
         ],
-        default=["perspective", "llama_guard", "llama_guard_zero_shot", "llama_guard_few_shot", "ttp", "harmformer"],
+        # Default to local-only baselines to avoid API calls unless explicitly requested.
+        default=["llama_guard", "llama_guard_zero_shot", "llama_guard_few_shot", "harmformer"],
     )
     parser.add_argument("--output", default="results/moderation/table7_results.json", help="Output JSON path")
     parser.add_argument("--limit", type=int, help="Limit samples (debug)")
@@ -93,7 +95,12 @@ def main() -> int:
 
     # API keys
     parser.add_argument("--openai-key", help="OpenAI API key (or set OPENAI_API_KEY)")
+    parser.add_argument("--openrouter-key", help="OpenRouter API key (or set OPENROUTER_API_KEY)")
     parser.add_argument("--perspective-key", help="Perspective API key (or set PERSPECTIVE_API_KEY)")
+    parser.add_argument("--openrouter-model", default=os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o"))
+    parser.add_argument("--openrouter-referer", default=os.environ.get("OPENROUTER_REFERER"), help="Optional HTTP-Referer header")
+    parser.add_argument("--openrouter-title", default=os.environ.get("OPENROUTER_TITLE"), help="Optional X-Title header")
+
 
     # Paper doesn't specify Perspective threshold for Table 7; we default to 0.4 for consistency.
     parser.add_argument("--perspective-threshold", type=float, default=0.4)
@@ -137,32 +144,69 @@ def main() -> int:
         )
 
     if "llama_guard" in args.baselines:
-        classifiers.append(
-            (
-                "Llama Guard",
-                LlamaGuard(model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME, device=args.device, prompt_mode="focused"),
+        try:
+            classifiers.append(
+                (
+                    "Llama Guard",
+                    LlamaGuard(
+                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
+                        device=args.device,
+                        prompt_mode="focused",
+                    ),
+                )
             )
-        )
+        except Exception as e:
+            print(f"Warning: Skipping Llama Guard (failed to load model): {e}")
     if "llama_guard_zero_shot" in args.baselines:
-        classifiers.append(
-            (
-                "Llama Guard Zero Shot",
-                LlamaGuard(model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME, device=args.device, prompt_mode="zero_shot"),
+        try:
+            classifiers.append(
+                (
+                    "Llama Guard Zero Shot",
+                    LlamaGuard(
+                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
+                        device=args.device,
+                        prompt_mode="zero_shot",
+                    ),
+                )
             )
-        )
+        except Exception as e:
+            print(f"Warning: Skipping Llama Guard Zero Shot (failed to load model): {e}")
     if "llama_guard_few_shot" in args.baselines:
-        classifiers.append(
-            (
-                "Llama Guard Few Shot",
-                LlamaGuard(model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME, device=args.device, prompt_mode="few_shot"),
+        try:
+            classifiers.append(
+                (
+                    "Llama Guard Few Shot",
+                    LlamaGuard(
+                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
+                        device=args.device,
+                        prompt_mode="few_shot",
+                    ),
+                )
             )
-        )
+        except Exception as e:
+            print(f"Warning: Skipping Llama Guard Few Shot (failed to load model): {e}")
 
     if "ttp" in args.baselines:
         openai_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
         if not openai_key:
             raise SystemExit("TTP enabled but no OpenAI key provided (set OPENAI_API_KEY or pass --openai-key)")
         classifiers.append(("TTP", OpenAITTPClient(api_key=openai_key, model="gpt-4o")))
+
+    if "ttp_openrouter" in args.baselines:
+        key = args.openrouter_key or os.environ.get("OPENROUTER_API_KEY")
+        if not key:
+            raise SystemExit("TTP (OpenRouter) enabled but no OpenRouter key provided (set OPENROUTER_API_KEY or pass --openrouter-key)")
+        classifiers.append(
+            (
+                f"TTP (OpenRouter: {args.openrouter_model})",
+                OpenRouterTTPClient(
+                    api_key=key,
+                    model=args.openrouter_model,
+                    referer=args.openrouter_referer,
+                    title=args.openrouter_title,
+                ),
+            )
+        )
 
     if "harmformer" in args.baselines:
         classifiers.append(("HarmFormer", HarmFormer(device=args.device)))

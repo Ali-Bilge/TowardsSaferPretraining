@@ -1,0 +1,64 @@
+{
+  "per_model": [
+    {
+      "model": "gemma_27b",
+      "leakage_percentages": {
+        "neutral": 10.393780632077068,
+        "passive": 11.834961997828447,
+        "provocative": 75.74468085106383,
+        "overall": 26.98182521268368
+      }
+    },
+    {
+      "model": "gemma_2b",
+      "leakage_percentages": {
+        "neutral": 9.227649146526955,
+        "passive": 11.889250814332247,
+        "provocative": 76.2862669245648,
+        "overall": 26.459783449342616
+      }
+    },
+    {
+      "model": "gemma_9b",
+      "leakage_percentages": {
+        "neutral": 9.971269224269056,
+        "passive": 11.237785016286644,
+        "provocative": 76.9825918762089,
+        "overall": 26.943155452436194
+      }
+    },
+    {
+      "model": "llama_1b",
+      "leakage_percentages": {
+        "neutral": 9.261450059151597,
+        "passive": 13.192182410423452,
+        "provocative": 75.08704061895551,
+        "overall": 26.411446249033254
+      }
+    },
+    {
+      "model": "llama_3b",
+      "leakage_percentages": {
+        "neutral": 8.720635457157343,
+        "passive": 11.889250814332247,
+        "provocative": 77.71760154738878,
+        "overall": 26.527455529775718
+      }
+    },
+    {
+      "model": "mistral_7b",
+      "leakage_percentages": {
+        "neutral": 10.005070136893696,
+        "passive": 13.409337676438653,
+        "provocative": 72.88201160541587,
+        "overall": 26.32443928847641
+      }
+    }
+  ],
+  "averages": {
+    "neutral": 9.596642442679288,
+    "passive": 12.242128121606948,
+    "provocative": 75.78336557059963,
+    "overall": 26.60801753029131
+  }
+}

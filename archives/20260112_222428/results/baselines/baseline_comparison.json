@@ -1,0 +1,96 @@
+{
+  "evaluation_config": {
+    "dataset": "data/TTP-Eval/TTPEval.tsv",
+    "total_samples": 393,
+    "baselines": [
+      "HarmFormer",
+      "TTP (GPT-4)"
+    ]
+  },
+  "results": [
+    {
+      "classifier": "HarmFormer",
+      "total_samples": 393,
+      "failed_samples": 0,
+      "evaluated_samples": 393,
+      "metrics": {
+        "overall": {
+          "precision": 0.8333333333333334,
+          "recall": 0.7368421052631579,
+          "f1": 0.782122905027933
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.782608695652174,
+            "recall": 0.5806451612903226,
+            "f1": 0.6666666666666667
+          },
+          "IH": {
+            "precision": 0.7916666666666666,
+            "recall": 0.5428571428571428,
+            "f1": 0.6440677966101694
+          },
+          "SE": {
+            "precision": 0.8055555555555556,
+            "recall": 0.7631578947368421,
+            "f1": 0.7837837837837838
+          },
+          "IL": {
+            "precision": 0.7777777777777778,
+            "recall": 0.5,
+            "f1": 0.6086956521739131
+          },
+          "SI": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1": 0.6666666666666666
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 393
+      }
+    },
+    {
+      "classifier": "TTP (GPT-4)",
+      "total_samples": 393,
+      "failed_samples": 0,
+      "evaluated_samples": 393,
+      "metrics": {
+        "overall": {
+          "precision": 0.9523809523809523,
+          "recall": 0.42105263157894735,
+          "f1": 0.583941605839416
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.9285714285714286,
+            "recall": 0.41935483870967744,
+            "f1": 0.5777777777777778
+          },
+          "IH": {
+            "precision": 0.8333333333333334,
+            "recall": 0.2857142857142857,
+            "f1": 0.42553191489361697
+          },
+          "SE": {
+            "precision": 1.0,
+            "recall": 0.4473684210526316,
+            "f1": 0.6181818181818182
+          },
+          "IL": {
+            "precision": 0.875,
+            "recall": 0.5,
+            "f1": 0.6363636363636364
+          },
+          "SI": {
+            "precision": 0.5,
+            "recall": 0.08333333333333333,
+            "f1": 0.14285714285714285
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 393
+      }
+    }
+  ]
+}

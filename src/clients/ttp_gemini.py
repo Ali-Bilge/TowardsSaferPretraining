@@ -168,8 +168,17 @@ class GeminiTTPClient:
             except Exception as e:
                 # Attempt to respect server-provided backoff if present.
                 msg = str(e)
+                # If the project has 0 quota, retrying just wastes time.
+                if "RESOURCE_EXHAUSTED" in msg and "limit: 0" in msg:
+                    return TTPResult(
+                        url=url,
+                        body=body,
+                        predicted_label=HarmLabel(),
+                        raw_response=last_text,
+                        error=msg,
+                    )
                 try:
-                    m = re.search(r"retry after\s+(\d+)s", msg, re.IGNORECASE)
+                    m = re.search(r"(?:retry after|retry in)\s+([0-9]+\.?[0-9]*)s", msg, re.IGNORECASE)
                     if m:
                         time.sleep(max(float(m.group(1)), self.retry_delay))
                         continue
@@ -191,6 +200,9 @@ class GeminiTTPClient:
 
     def predict(self, text: str) -> HarmLabel:
         result = self.evaluate(url="ttp://text", body=text)
+        # Do not silently fail-open: callers (e.g. evaluation scripts) should count failures.
+        if result.error:
+            raise RuntimeError(result.error)
         return result.predicted_label
 
     def _parse_response(self, content: str) -> tuple[HarmLabel, Optional[str]]:

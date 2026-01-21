@@ -1,0 +1,98 @@
+INFO:__main__:Loading TTP-Eval from data/TTP-Eval/TTPEval.tsv...
+INFO:__main__:Loaded 393 samples
+INFO:__main__:Initializing Llama Guard...
+INFO:src.baselines.llama_guard:Loading Llama Guard from meta-llama/LlamaGuard-7b...
+ERROR:__main__:Failed to initialize Llama Guard; skipping it. Error: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/LlamaGuard-7b.
+403 Client Error. (Request ID: Root=1-6964474f-6c931cfb63aa74405548dddd;1d465df4-1eb0-4f4a-82d4-9866911dce3b)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/LlamaGuard-7b/resolve/main/config.json.
+Your request to access model meta-llama/LlamaGuard-7b is awaiting a review from the repo authors.
+INFO:__main__:Initializing HarmFormer...
+INFO:src.models:Loading HarmFormer from themendu/HarmFormer on cuda...
+INFO:__main__:Initializing TTP (GPT-4)...
+INFO:__main__:Initializing TTP (Gemini: gemini-2.0-flash)...
+/gpfs/home6/scur0009/TowardsSaferPretraining/src/evaluation/gemini_ttp_evaluator.py:73: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai  # type: ignore
+[codecarbon WARNING @ 01:58:59] Multiple instances of codecarbon are allowed to run at the same time.
+INFO:__main__:Evaluating HarmFormer...
+Evaluating HarmFormer:   0%|          | 0/393 [00:00<?, ?it/s]Evaluating HarmFormer:   0%|          | 1/393 [00:00<01:14,  5.26it/s]Evaluating HarmFormer:   1%|          | 4/393 [00:00<00:24, 15.66it/s]Evaluating HarmFormer:   2%|▏         | 8/393 [00:00<00:17, 22.22it/s]Evaluating HarmFormer:   3%|▎         | 12/393 [00:00<00:14, 27.12it/s]Evaluating HarmFormer:   4%|▍         | 16/393 [00:00<00:12, 29.57it/s]Evaluating HarmFormer:   5%|▌         | 20/393 [00:00<00:11, 31.45it/s]Evaluating HarmFormer:   6%|▌         | 24/393 [00:00<00:11, 32.85it/s]Evaluating HarmFormer:   7%|▋         | 28/393 [00:00<00:10, 33.54it/s]Evaluating HarmFormer:   8%|▊         | 32/393 [00:01<00:10, 34.11it/s]Evaluating HarmFormer:   9%|▉         | 36/393 [00:01<00:10, 34.48it/s]Evaluating HarmFormer:  10%|█         | 40/393 [00:01<00:10, 35.00it/s]Evaluating HarmFormer:  11%|█         | 44/393 [00:01<00:09, 35.06it/s]Evaluating HarmFormer:  12%|█▏        | 48/393 [00:01<00:09, 35.31it/s]Evaluating HarmFormer:  13%|█▎        | 52/393 [00:01<00:09, 35.28it/s]Evaluating HarmFormer:  14%|█▍        | 56/393 [00:01<00:09, 35.20it/s]Evaluating HarmFormer:  15%|█▌        | 60/393 [00:01<00:09, 35.45it/s]Evaluating HarmFormer:  16%|█▋        | 64/393 [00:02<00:09, 35.35it/s]Evaluating HarmFormer:  17%|█▋        | 68/393 [00:02<00:09, 35.38it/s]Evaluating HarmFormer:  18%|█▊        | 72/393 [00:02<00:09, 35.44it/s]Evaluating HarmFormer:  19%|█▉        | 76/393 [00:02<00:08, 35.33it/s]Evaluating HarmFormer:  20%|██        | 80/393 [00:02<00:08, 35.18it/s]Evaluating HarmFormer:  21%|██▏       | 84/393 [00:02<00:08, 35.16it/s]Evaluating HarmFormer:  22%|██▏       | 88/393 [00:02<00:08, 35.09it/s]Evaluating HarmFormer:  23%|██▎       | 92/393 [00:02<00:08, 34.93it/s]Evaluating HarmFormer:  24%|██▍       | 96/393 [00:02<00:08, 35.04it/s]Evaluating HarmFormer:  25%|██▌       | 100/393 [00:03<00:08, 35.02it/s]Evaluating HarmFormer:  26%|██▋       | 104/393 [00:03<00:08, 35.29it/s]Evaluating HarmFormer:  27%|██▋       | 108/393 [00:03<00:08, 35.24it/s]Evaluating HarmFormer:  28%|██▊       | 112/393 [00:03<00:07, 35.51it/s]Evaluating HarmFormer:  30%|██▉       | 116/393 [00:03<00:07, 35.25it/s]Evaluating HarmFormer:  31%|███       | 120/393 [00:03<00:07, 35.10it/s]Evaluating HarmFormer:  32%|███▏      | 124/393 [00:03<00:07, 35.07it/s]Evaluating HarmFormer:  33%|███▎      | 128/393 [00:03<00:07, 35.17it/s]Evaluating HarmFormer:  34%|███▎      | 132/393 [00:03<00:07, 35.24it/s]Evaluating HarmFormer:  35%|███▍      | 136/393 [00:04<00:07, 35.36it/s]Evaluating HarmFormer:  36%|███▌      | 140/393 [00:04<00:07, 35.10it/s]Evaluating HarmFormer:  37%|███▋      | 144/393 [00:04<00:07, 35.27it/s]Evaluating HarmFormer:  38%|███▊      | 148/393 [00:04<00:06, 35.16it/s]Evaluating HarmFormer:  39%|███▊      | 152/393 [00:04<00:06, 34.98it/s]Evaluating HarmFormer:  40%|███▉      | 156/393 [00:04<00:06, 35.22it/s]Evaluating HarmFormer:  41%|████      | 160/393 [00:04<00:06, 35.07it/s]Evaluating HarmFormer:  42%|████▏     | 164/393 [00:04<00:06, 35.08it/s]Evaluating HarmFormer:  43%|████▎     | 168/393 [00:04<00:06, 35.22it/s]Evaluating HarmFormer:  44%|████▍     | 172/393 [00:05<00:06, 35.24it/s]Evaluating HarmFormer:  45%|████▍     | 176/393 [00:05<00:06, 35.49it/s]Evaluating HarmFormer:  46%|████▌     | 180/393 [00:05<00:05, 35.60it/s]Evaluating HarmFormer:  47%|████▋     | 184/393 [00:05<00:05, 35.11it/s]Evaluating HarmFormer:  48%|████▊     | 188/393 [00:05<00:05, 35.15it/s]Evaluating HarmFormer:  49%|████▉     | 192/393 [00:05<00:05, 35.15it/s]Evaluating HarmFormer:  50%|████▉     | 196/393 [00:05<00:05, 35.04it/s]Evaluating HarmFormer:  51%|█████     | 200/393 [00:05<00:05, 34.96it/s]Evaluating HarmFormer:  52%|█████▏    | 204/393 [00:05<00:05, 35.43it/s]Evaluating HarmFormer:  53%|█████▎    | 208/393 [00:06<00:05, 35.25it/s]Evaluating HarmFormer:  54%|█████▍    | 212/393 [00:06<00:05, 35.23it/s]Evaluating HarmFormer:  55%|█████▍    | 216/393 [00:06<00:05, 35.04it/s]Evaluating HarmFormer:  56%|█████▌    | 220/393 [00:06<00:04, 35.19it/s]Evaluating HarmFormer:  57%|█████▋    | 224/393 [00:06<00:04, 35.12it/s]Evaluating HarmFormer:  58%|█████▊    | 228/393 [00:06<00:04, 35.50it/s]Evaluating HarmFormer:  59%|█████▉    | 232/393 [00:06<00:04, 35.80it/s]Evaluating HarmFormer:  60%|██████    | 236/393 [00:06<00:04, 35.69it/s]Evaluating HarmFormer:  61%|██████    | 240/393 [00:06<00:04, 35.80it/s]Evaluating HarmFormer:  62%|██████▏   | 244/393 [00:07<00:04, 35.93it/s]Evaluating HarmFormer:  63%|██████▎   | 248/393 [00:07<00:04, 35.87it/s]Evaluating HarmFormer:  64%|██████▍   | 252/393 [00:07<00:03, 35.99it/s]Evaluating HarmFormer:  65%|██████▌   | 256/393 [00:07<00:03, 36.18it/s]Evaluating HarmFormer:  66%|██████▌   | 260/393 [00:07<00:03, 36.30it/s]Evaluating HarmFormer:  67%|██████▋   | 264/393 [00:07<00:03, 36.30it/s]Evaluating HarmFormer:  68%|██████▊   | 268/393 [00:07<00:03, 34.96it/s]Evaluating HarmFormer:  69%|██████▉   | 272/393 [00:07<00:03, 35.00it/s]Evaluating HarmFormer:  70%|███████   | 276/393 [00:08<00:03, 34.88it/s]Evaluating HarmFormer:  71%|███████   | 280/393 [00:08<00:03, 34.87it/s]Evaluating HarmFormer:  72%|███████▏  | 284/393 [00:08<00:03, 35.19it/s]Evaluating HarmFormer:  73%|███████▎  | 288/393 [00:08<00:02, 35.56it/s]Evaluating HarmFormer:  74%|███████▍  | 292/393 [00:08<00:02, 35.96it/s]Evaluating HarmFormer:  75%|███████▌  | 296/393 [00:08<00:02, 35.60it/s]Evaluating HarmFormer:  76%|███████▋  | 300/393 [00:08<00:02, 36.03it/s]Evaluating HarmFormer:  77%|███████▋  | 304/393 [00:08<00:02, 36.14it/s]Evaluating HarmFormer:  78%|███████▊  | 308/393 [00:08<00:02, 35.83it/s]Evaluating HarmFormer:  79%|███████▉  | 312/393 [00:09<00:02, 36.21it/s]Evaluating HarmFormer:  80%|████████  | 316/393 [00:09<00:02, 36.14it/s]Evaluating HarmFormer:  81%|████████▏ | 320/393 [00:09<00:02, 36.12it/s]Evaluating HarmFormer:  82%|████████▏ | 324/393 [00:09<00:01, 36.14it/s]Evaluating HarmFormer:  83%|████████▎ | 328/393 [00:09<00:01, 35.70it/s]Evaluating HarmFormer:  84%|████████▍ | 332/393 [00:09<00:01, 35.32it/s]Evaluating HarmFormer:  85%|████████▌ | 336/393 [00:09<00:01, 35.60it/s]Evaluating HarmFormer:  87%|████████▋ | 340/393 [00:09<00:01, 36.03it/s]Evaluating HarmFormer:  88%|████████▊ | 344/393 [00:09<00:01, 36.14it/s]Evaluating HarmFormer:  89%|████████▊ | 348/393 [00:10<00:01, 35.99it/s]Evaluating HarmFormer:  90%|████████▉ | 352/393 [00:10<00:01, 36.06it/s]Evaluating HarmFormer:  91%|█████████ | 356/393 [00:10<00:01, 36.21it/s]Evaluating HarmFormer:  92%|█████████▏| 360/393 [00:10<00:00, 36.17it/s]Evaluating HarmFormer:  93%|█████████▎| 364/393 [00:10<00:00, 36.58it/s]Evaluating HarmFormer:  94%|█████████▎| 368/393 [00:10<00:00, 36.53it/s]Evaluating HarmFormer:  95%|█████████▍| 372/393 [00:10<00:00, 36.10it/s]Evaluating HarmFormer:  96%|█████████▌| 376/393 [00:10<00:00, 36.12it/s]Evaluating HarmFormer:  97%|█████████▋| 380/393 [00:10<00:00, 35.59it/s]Evaluating HarmFormer:  98%|█████████▊| 384/393 [00:11<00:00, 35.78it/s]Evaluating HarmFormer:  99%|█████████▊| 388/393 [00:11<00:00, 35.85it/s]Evaluating HarmFormer: 100%|█████████▉| 392/393 [00:11<00:00, 35.64it/s]Evaluating HarmFormer: 100%|██████████| 393/393 [00:11<00:00, 34.89it/s]
+INFO:__main__:Evaluating TTP (GPT-4)...
+Evaluating TTP (GPT-4):   0%|          | 0/393 [00:00<?, ?it/s]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 9.232000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 3.740000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+WARNING:src.evaluation.ttp_evaluator:Attempt 1 failed for ttp://text: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-f1UEi3G06LxW9frsTLEWyyqa on tokens per min (TPM): Limit 30000, Used 29102, Requested 4616. Please try again in 7.436s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 6.292000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   0%|          | 1/393 [00:37<4:02:07, 37.06s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 2.888000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 10.820000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+WARNING:src.evaluation.ttp_evaluator:Attempt 1 failed for ttp://text: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-f1UEi3G06LxW9frsTLEWyyqa on tokens per min (TPM): Limit 30000, Used 27106, Requested 5410. Please try again in 5.032s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 3.881000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 8.770000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+WARNING:src.evaluation.ttp_evaluator:Attempt 2 failed for ttp://text: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-f1UEi3G06LxW9frsTLEWyyqa on tokens per min (TPM): Limit 30000, Used 29141, Requested 5410. Please try again in 9.102s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 7.950000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 10.820000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+WARNING:src.evaluation.ttp_evaluator:Attempt 3 failed for ttp://text: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-f1UEi3G06LxW9frsTLEWyyqa on tokens per min (TPM): Limit 30000, Used 26807, Requested 5410. Please try again in 4.434s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+Evaluating TTP (GPT-4):   1%|          | 2/393 [01:25<4:45:44, 43.85s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 1.580000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 7.549000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   1%|          | 3/393 [01:37<3:10:35, 29.32s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 9.216000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 3.868000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   1%|          | 4/393 [01:56<2:41:55, 24.97s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 7.812000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 2.362000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   1%|▏         | 5/393 [02:08<2:13:19, 20.62s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 8.134000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 3.590000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   2%|▏         | 6/393 [02:23<1:59:45, 18.57s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 6.106000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   2%|▏         | 7/393 [02:33<1:41:39, 15.80s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 9.228000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 9.228000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+WARNING:src.evaluation.ttp_evaluator:Attempt 1 failed for ttp://text: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-f1UEi3G06LxW9frsTLEWyyqa on tokens per min (TPM): Limit 30000, Used 26896, Requested 4614. Please try again in 3.02s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 1.868000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 8.104000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   2%|▏         | 8/393 [03:08<2:21:04, 21.99s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 8.994000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 1.742000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Evaluating TTP (GPT-4):   2%|▏         | 9/393 [03:23<2:06:23, 19.75s/it]INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 7.640000 seconds
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+INFO:openai._base_client:Retrying request to /chat/completions in 7.640000 seconds
+[2026-01-12T02:02:54.073] error: *** JOB 18247028 ON gcn32 CANCELLED AT 2026-01-12T02:02:54 DUE to SIGNAL Terminated ***

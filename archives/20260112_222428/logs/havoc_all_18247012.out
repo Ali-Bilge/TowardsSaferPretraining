@@ -1,0 +1,19 @@
+Evaluating modeleval leakage for gemma_2b...
+Saved: results/havoc/gemma_2b_results.json
+Completed: gemma_2b
+Evaluating modeleval leakage for gemma_9b...
+Saved: results/havoc/gemma_9b_results.json
+Completed: gemma_9b
+Evaluating modeleval leakage for gemma_27b...
+Saved: results/havoc/gemma_27b_results.json
+Completed: gemma_27b
+Evaluating modeleval leakage for llama_1b...
+Saved: results/havoc/llama_1b_results.json
+Completed: llama_1b
+Evaluating modeleval leakage for llama_3b...
+Saved: results/havoc/llama_3b_results.json
+Completed: llama_3b
+Evaluating modeleval leakage for mistral_7b...
+Saved: results/havoc/mistral_7b_results.json
+Completed: mistral_7b
+All HAVOC evaluations complete!

@@ -21,19 +21,37 @@ print("=" * 80)
 # Table 3: TTP Quality on TTP-Eval
 print("\nTable 3: TTP Quality (Toxic Dimension)")
 try:
-    ttp_payload = load_json("results/ttp_eval/results.json")
-    # Unified schema: find the OpenAI TTP result entry
+    # Preferred output path
+    try:
+        ttp_payload = load_json("results/ttp_eval/results.json")
+    except RuntimeError:
+        # Backwards/alternative job output name
+        ttp_payload = load_json("results/ttp_eval/ttp_results.json")
+    # Support both schemas:
+    # - New unified evaluator: {"results": [{"setup": "...", "metrics": {...}}, ...]}
+    # - Legacy ttp_eval output: {"metrics": {...}, "stats": {...}, "results": [...samples...]}
+    metrics = None
+    overall = None
+
     ttp_entry = None
     for r in ttp_payload.get("results", []):
-        setup = (r.get("setup") or "").lower()
-        if setup.startswith("ttp ("):
-            ttp_entry = r
-            break
-    if ttp_entry is None:
-        raise RuntimeError("No TTP entry found in results/ttp_eval/results.json")
+        if isinstance(r, dict) and "setup" in r:
+            setup = (r.get("setup") or "").lower()
+            if setup.startswith("ttp ("):
+                ttp_entry = r
+                break
 
-    metrics = ttp_entry.get("metrics", {}).get("per_harm", {})
-    overall = ttp_entry.get("metrics", {}).get("overall", {})
+    if ttp_entry is not None:
+        metrics = ttp_entry.get("metrics", {}).get("per_harm", {})
+        overall = ttp_entry.get("metrics", {}).get("overall", {})
+    else:
+        # Legacy
+        legacy_metrics = ttp_payload.get("metrics", {}) if isinstance(ttp_payload, dict) else {}
+        metrics = legacy_metrics.get("per_harm", {})
+        overall = legacy_metrics.get("overall", {})
+
+    if not metrics or not overall:
+        raise RuntimeError("No TTP metrics found in results/ttp_eval/*.json")
 
     table3_data = [
         ["Hate & Violence",
@@ -73,16 +91,54 @@ except RuntimeError as e:
     ]
 print(tabulate(table3_data, headers=["Harm", "Precision", "Recall", "F1"], tablefmt="grid"))
 
-# Table 4: TTP vs Perspective on TTP-Eval (Toxic dimension)
-print("\nTable 4: TTP vs Perspective (Toxic Dimension, TTP-Eval)")
+# Table 4: Baselines on TTP-Eval (Toxic dimension), excluding Perspective
+print("\nTable 4: Baselines on TTP-Eval (Toxic Dimension; Perspective omitted)")
 try:
-    table4 = load_json("results/ttp_eval_baselines/results.json")
     rows = []
-    for r in table4.get("results", []):
-        m = r.get("metrics", {}).get("overall", {})
-        rows.append([r.get("setup", "Unknown"), m.get("precision", "N/A"), m.get("recall", "N/A"), m.get("f1", "N/A")])
+
+    # TTP (from Table 3 output; legacy schema)
+    try:
+        ttp_payload = load_json("results/ttp_eval/ttp_results.json")
+        overall = (ttp_payload.get("metrics") or {}).get("overall", {})
+        if overall:
+            rows.append(["TTP (gpt-4o)", overall.get("precision", "N/A"), overall.get("recall", "N/A"), overall.get("f1", "N/A")])
+    except RuntimeError:
+        pass
+
+    # HarmFormer on TTP-Eval (proxy run; also used for Table 6)
+    try:
+        harmformer_payload = load_json("results/harmformer/harmformer_results.json")
+        overall = (harmformer_payload.get("metrics") or {}).get("overall", {})
+        if overall:
+            rows.append(["HarmFormer", overall.get("precision", "N/A"), overall.get("recall", "N/A"), overall.get("f1", "N/A")])
+    except RuntimeError:
+        pass
+
+    # Any additional unified-evaluator outputs (Gemini, OpenRouter TTP, Llama Guard, local TTP, etc.)
+    # We exclude Perspective rows by name.
+    for p in [
+        "results/ttp_eval_baselines/results.json",
+        "results/ttp_eval_baselines/table4_gemini_ttp.json",
+        "results/ttp_eval_baselines/table4_local_ttp_gemma.json",
+        "results/ttp_eval_baselines/table4_local_ttp_llama32b.json",
+    ]:
+        try:
+            payload = load_json(p)
+        except RuntimeError:
+            continue
+        for r in payload.get("results", []):
+            setup = (r.get("setup") or "").lower()
+            if "perspective" in setup:
+                continue
+            m = r.get("metrics", {}).get("overall", {})
+            evaluated = r.get("evaluated_samples")
+            if isinstance(evaluated, int) and evaluated == 0:
+                rows.append([r.get("setup", "Unknown"), "N/A", "N/A", "N/A"])
+            else:
+                rows.append([r.get("setup", "Unknown"), m.get("precision", "N/A"), m.get("recall", "N/A"), m.get("f1", "N/A")])
+
     if not rows:
-        raise RuntimeError("No results found in results/ttp_eval_baselines/results.json")
+        raise RuntimeError("No Table 4 baseline results found (non-Perspective).")
     print(tabulate(rows, headers=["Setup", "Precision", "Recall", "F1"], tablefmt="grid"))
 except RuntimeError as e:
     print(f"Warning: Could not load Table 4 results ({e}).")
@@ -119,20 +175,42 @@ print(tabulate(table6_data, headers=["Harm", "Precision", "Recall", "F1"], table
 # Table 7: OpenAI Moderation test set
 print("\nTable 7: Performance on OpenAI Moderation Dataset (Binary Toxic Label)")
 try:
-    mod_results = load_json("results/moderation/table7_results.json")
+    try:
+        mod_results = load_json("results/moderation/table7_results.json")
+    except RuntimeError:
+        # PR job scripts may split API vs local runs.
+        combined = []
+        for p in [
+            "results/moderation/table7_api_results.json",
+            "results/moderation/table7_local_results.json",
+        ]:
+            try:
+                payload = load_json(p)
+                combined.extend(payload.get("results", []))
+            except RuntimeError:
+                pass
+        if not combined:
+            raise RuntimeError("No results found in results/moderation/table7_*.json")
+        mod_results = {"results": combined}
     rows = []
     for r in mod_results.get("results", []):
         m = r.get("metrics", {}).get("overall", {})
         rows.append([r.get("classifier", "Unknown"), m.get("precision", "N/A"), m.get("recall", "N/A"), m.get("f1", "N/A")])
     if not rows:
-        raise RuntimeError("No results found in results/moderation/table7_results.json")
+        raise RuntimeError("No results found in results/moderation/table7_*.json")
     print(tabulate(rows, headers=["Setup", "Precision", "Recall", "F1"], tablefmt="grid"))
 except RuntimeError as e:
     print(f"Warning: Could not load Table 7 results ({e}).")
 
 # Table 10: HAVOC Leakage
 print("\nTable 10: Model-Averaged Leakage on HAVOC (%)")
-havoc_files = list(Path("results/havoc").glob("*_results.json"))
+# We default to "medium-only" models to match jobs/run_havoc_all.sh.
+# If those files are missing, fall back to whatever exists.
+preferred_models = ["gemma_9b", "llama_3b", "mistral_7b"]
+preferred_files = [Path(f"results/havoc/{m}_results.json") for m in preferred_models]
+havoc_files = [p for p in preferred_files if p.exists()]
+if not havoc_files:
+    havoc_files = list(Path("results/havoc").glob("*_results.json"))
 if havoc_files:
     # Load and aggregate results
     aggregated_results = {}

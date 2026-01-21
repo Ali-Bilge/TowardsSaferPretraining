@@ -56,22 +56,30 @@ export CODECARBON_OUTPUT_DIR="${CODECARBON_OUTPUT_DIR:-$HOME/TowardsSaferPretrai
 export CODECARBON_EXPERIMENT_ID="${CODECARBON_EXPERIMENT_ID:-${SLURM_JOB_ID:-}}"
 
 # Ensure required keys exist
-# These jobs exists solely to run API baselines. If keys are missing, fail immediately
-if [ -z "${OPENAI_API_KEY:-}" ]; then
-  echo "Error: OPENAI_API_KEY is required for TTP baseline" >&2
-  exit 1
-fi
-if [ -z "${PERSPECTIVE_API_KEY:-}" ]; then
-  echo "Error: PERSPECTIVE_API_KEY is required for Perspective baseline" >&2
+# This job exists solely to run API-backed baselines. Perspective is omitted.
+if [ -z "${OPENROUTER_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+  echo "Error: Need OPENROUTER_API_KEY or OPENAI_API_KEY for TTP baseline" >&2
   exit 1
 fi
 
-# Run ONLY API/network baselines (Table 7 API rows)
+# Run ONLY API/network baselines (Table 7 API rows). Perspective omitted.
+# Default to a small limit to fit low budgets; override via TTP_API_LIMIT.
+API_LIMIT="${TTP_API_LIMIT:-200}"
+BASELINES=()
+EXTRA_ARGS=()
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+  BASELINES+=(ttp_openrouter)
+  EXTRA_ARGS+=(--openrouter-key "$OPENROUTER_API_KEY")
+else
+  BASELINES+=(ttp)
+  EXTRA_ARGS+=(--openai-key "$OPENAI_API_KEY")
+fi
+
 if python scripts/evaluate_openai_moderation.py \
-  --baselines perspective ttp \
+  --baselines "${BASELINES[@]}" \
   --device cpu \
-  --openai-key "$OPENAI_API_KEY" \
-  --perspective-key "$PERSPECTIVE_API_KEY" \
+  --limit "$API_LIMIT" \
+  "${EXTRA_ARGS[@]}" \
   --output results/moderation/table7_api_results.json; then
     echo "Baselines (API) complete!"
     echo "Results saved to: results/moderation/table7_api_results.json"

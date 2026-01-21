@@ -44,10 +44,7 @@ mkdir -p results/havoc
 
 # Model keys present in data/HAVOC/havoc_modeleval.tsv
 MODEL_KEYS=(
-  "gemma_2b"
   "gemma_9b"
-  "gemma_27b"
-  "llama_1b"
   "llama_3b"
   "mistral_7b"
 )

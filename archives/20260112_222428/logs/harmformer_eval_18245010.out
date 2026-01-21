@@ -1,0 +1,33 @@
+
+============================================================
+HarmFormer Evaluation Results (TTP-Eval)
+============================================================
+
+Overall Performance:
+  Precision: 0.833
+  Recall:    0.737
+  F1 Score:  0.782
+
+Per-Harm Performance:
+  H:
+    Precision: 0.783
+    Recall:    0.581
+    F1:        0.667
+  IH:
+    Precision: 0.792
+    Recall:    0.543
+    F1:        0.644
+  SE:
+    Precision: 0.806
+    Recall:    0.763
+    F1:        0.784
+  IL:
+    Precision: 0.778
+    Recall:    0.500
+    F1:        0.609
+  SI:
+    Precision: 0.667
+    Recall:    0.667
+    F1:        0.667
+============================================================
+HarmFormer Evaluation Complete!

@@ -1,0 +1,22 @@
+Loaded 1680 samples (toxic=522, non_toxic=1158)
+Warning: Skipping Llama Guard (failed to load model): You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/Llama-Guard-3-8B.
+403 Client Error. (Request ID: Root=1-69702bcf-75b06a7d72a7288c79d15160;051bb755-47d3-4b51-9720-9cba248bb212)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-Guard-3-8B/resolve/main/config.json.
+Access to model meta-llama/Llama-Guard-3-8B is restricted and you are not in the authorized list. Visit https://huggingface.co/meta-llama/Llama-Guard-3-8B to ask for access.
+Warning: Skipping Llama Guard Zero Shot (failed to load model): You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/Llama-Guard-3-8B.
+403 Client Error. (Request ID: Root=1-69702bd0-7a2da2ed0e44f0420b0f8072;b53151e7-2ebc-4682-b510-39c56a141f15)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-Guard-3-8B/resolve/main/config.json.
+Access to model meta-llama/Llama-Guard-3-8B is restricted and you are not in the authorized list. Visit https://huggingface.co/meta-llama/Llama-Guard-3-8B to ask for access.
+Warning: Skipping Llama Guard Few Shot (failed to load model): You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/Llama-Guard-3-8B.
+403 Client Error. (Request ID: Root=1-69702bd0-42c522570c0847584277dd46;fbd653c3-3f66-4354-88c9-fd990dae41a3)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-Guard-3-8B/resolve/main/config.json.
+Access to model meta-llama/Llama-Guard-3-8B is restricted and you are not in the authorized list. Visit https://huggingface.co/meta-llama/Llama-Guard-3-8B to ask for access.
+Saved: results/moderation/table7_local_results.json
+Baselines (local) complete!
+Results saved to: results/moderation/table7_local_results.json

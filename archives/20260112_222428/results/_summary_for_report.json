@@ -1,0 +1,168 @@
+{
+  "ttp_eval": {
+    "n": 393,
+    "overall": {
+      "precision": 0.9361702127659575,
+      "recall": 0.4631578947368421,
+      "f1": 0.6197183098591549
+    },
+    "per_harm": {
+      "H": {
+        "precision": 0.8461538461538461,
+        "recall": 0.3548387096774194,
+        "f1": 0.5
+      },
+      "IH": {
+        "precision": 0.75,
+        "recall": 0.17142857142857143,
+        "f1": 0.2790697674418604
+      },
+      "SE": {
+        "precision": 0.9545454545454546,
+        "recall": 0.5526315789473685,
+        "f1": 0.7000000000000001
+      },
+      "IL": {
+        "precision": 0.6666666666666666,
+        "recall": 0.5714285714285714,
+        "f1": 0.6153846153846153
+      },
+      "SI": {
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4
+      }
+    },
+    "stats": {
+      "total_requests": 388,
+      "failed_requests": 5,
+      "total_tokens": 1571539,
+      "estimated_cost_usd": 12.572312
+    }
+  },
+  "harmformer_ttp_eval": {
+    "n": 393,
+    "overall": {
+      "precision": 0.8333333333333334,
+      "recall": 0.7368421052631579,
+      "f1": 0.782122905027933
+    },
+    "per_harm": {
+      "H": {
+        "precision": 0.782608695652174,
+        "recall": 0.5806451612903226,
+        "f1": 0.6666666666666667
+      },
+      "IH": {
+        "precision": 0.7916666666666666,
+        "recall": 0.5428571428571428,
+        "f1": 0.6440677966101694
+      },
+      "SE": {
+        "precision": 0.8055555555555556,
+        "recall": 0.7631578947368421,
+        "f1": 0.7837837837837838
+      },
+      "IL": {
+        "precision": 0.7777777777777778,
+        "recall": 0.5,
+        "f1": 0.6086956521739131
+      },
+      "SI": {
+        "precision": 0.6666666666666666,
+        "recall": 0.6666666666666666,
+        "f1": 0.6666666666666666
+      }
+    }
+  },
+  "baselines_ttp_eval": {
+    "baselines": [
+      "HarmFormer",
+      "TTP (GPT-4)"
+    ],
+    "results": [
+      {
+        "classifier": "HarmFormer",
+        "n": 393,
+        "overall": {
+          "precision": 0.8333333333333334,
+          "recall": 0.7368421052631579,
+          "f1": 0.782122905027933
+        }
+      },
+      {
+        "classifier": "TTP (GPT-4)",
+        "n": 393,
+        "overall": {
+          "precision": 0.9148936170212766,
+          "recall": 0.45263157894736844,
+          "f1": 0.6056338028169014
+        }
+      }
+    ]
+  },
+  "havoc": {
+    "averages": {
+      "neutral": 9.596642442679288,
+      "passive": 12.242128121606948,
+      "provocative": 75.78336557059963,
+      "overall": 26.60801753029131
+    },
+    "per_model": [
+      {
+        "model": "gemma_27b",
+        "leakage_percentages": {
+          "neutral": 10.393780632077068,
+          "passive": 11.834961997828447,
+          "provocative": 75.74468085106383,
+          "overall": 26.98182521268368
+        }
+      },
+      {
+        "model": "gemma_2b",
+        "leakage_percentages": {
+          "neutral": 9.227649146526955,
+          "passive": 11.889250814332247,
+          "provocative": 76.2862669245648,
+          "overall": 26.459783449342616
+        }
+      },
+      {
+        "model": "gemma_9b",
+        "leakage_percentages": {
+          "neutral": 9.971269224269056,
+          "passive": 11.237785016286644,
+          "provocative": 76.9825918762089,
+          "overall": 26.943155452436194
+        }
+      },
+      {
+        "model": "llama_1b",
+        "leakage_percentages": {
+          "neutral": 9.261450059151597,
+          "passive": 13.192182410423452,
+          "provocative": 75.08704061895551,
+          "overall": 26.411446249033254
+        }
+      },
+      {
+        "model": "llama_3b",
+        "leakage_percentages": {
+          "neutral": 8.720635457157343,
+          "passive": 11.889250814332247,
+          "provocative": 77.71760154738878,
+          "overall": 26.527455529775718
+        }
+      },
+      {
+        "model": "mistral_7b",
+        "leakage_percentages": {
+          "neutral": 10.005070136893696,
+          "passive": 13.409337676438653,
+          "provocative": 72.88201160541587,
+          "overall": 26.32443928847641
+        }
+      }
+    ]
+  }
+}

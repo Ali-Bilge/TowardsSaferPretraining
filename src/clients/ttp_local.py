@@ -46,7 +46,8 @@ class TransformersTTPClient:
         device: Optional[str] = None,
         dtype: Literal["auto", "float16", "bfloat16"] = "auto",
         quantization: Literal["none", "8bit", "4bit"] = "none",
-        max_new_tokens: int = 256,
+        # Keep this small: we only need a short <Label> dict, and larger values can OOM on 40GB GPUs.
+        max_new_tokens: int = 128,
     ):
         try:
             import torch  # type: ignore
@@ -57,6 +58,15 @@ class TransformersTTPClient:
         self._torch = torch
         self.model_id = model_id
         self.max_new_tokens = max_new_tokens
+        # Cap input length to avoid KV-cache OOM on large prompts.
+        # Override via env if you want to force a smaller cap.
+        self.max_input_tokens: Optional[int] = None
+        env_max_in = os.environ.get("TTP_LOCAL_MAX_INPUT_TOKENS")
+        if env_max_in and env_max_in.strip():
+            try:
+                self.max_input_tokens = int(env_max_in)
+            except Exception:
+                self.max_input_tokens = None
 
         if device is None:
             if torch.cuda.is_available():
@@ -73,14 +83,18 @@ class TransformersTTPClient:
         self.prompt_template = prompt_file.read_text(encoding="utf-8", errors="replace")
         self._parse_prompt_template()
 
-        tok = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+        hf_token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+        auth_kwargs: Dict[str, Any] = {"token": hf_token} if hf_token else {}
+
+        tok = AutoTokenizer.from_pretrained(model_id, use_fast=True, **auth_kwargs)
         if tok.pad_token_id is None:
             tok.pad_token_id = tok.eos_token_id
         self.tokenizer = tok
 
         # dtype handling
         if dtype == "auto":
-            torch_dtype = None
+            # On CUDA, defaulting to fp32 is often too large for 27B/32B models.
+            torch_dtype = torch.float16 if device == "cuda" else None
         elif dtype == "float16":
             torch_dtype = torch.float16
         else:
@@ -102,10 +116,19 @@ class TransformersTTPClient:
                 load_kwargs["load_in_4bit"] = True
 
         logger.info("Loading local TTP model %s on %s (quantization=%s)...", model_id, device, quantization)
+        if device == "cuda" and torch.cuda.device_count() > 1:
+            # Encourage sharding across multiple GPUs instead of filling GPU:0.
+            # Snellius A100 nodes are often 40GB per GPU; leave some headroom for KV cache.
+            load_kwargs.setdefault("max_memory", {i: "38GiB" for i in range(torch.cuda.device_count())})
+            load_kwargs["max_memory"].setdefault("cpu", "64GiB")
+            device_map = "balanced"
+        else:
+            device_map = "auto" if device == "cuda" else None
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
-            device_map="auto" if device == "cuda" else None,
+            device_map=device_map,
+            **auth_kwargs,
             **load_kwargs,
         )
         if device != "cuda":
@@ -144,7 +167,25 @@ class TransformersTTPClient:
         self._prefix = prefix
 
     def _format_prompt(self, user_message: str) -> str:
-        # Represent the ChatML conversation explicitly for a plain-text CausalLM.
+        # Prefer the model's chat template when available (important for instruct models like Gemma / LLaMA).
+        if hasattr(self.tokenizer, "apply_chat_template"):
+            # Try a couple role conventions: many models use "assistant", Gemma often uses "model".
+            for map_assistant_to_model in (False, True):
+                try:
+                    messages = []
+                    for role, content in self._prefix:
+                        r = "model" if (map_assistant_to_model and role == "assistant") else role
+                        messages.append({"role": r, "content": content})
+                    messages.append({"role": "user", "content": user_message})
+                    return self.tokenizer.apply_chat_template(  # type: ignore[attr-defined]
+                        messages,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                except Exception:
+                    continue
+
+        # Fallback: represent the ChatML conversation explicitly for a plain-text CausalLM.
         parts = []
         for role, content in self._prefix:
             parts.append(f"{role.upper()}:\n{content}")
@@ -191,15 +232,28 @@ class TransformersTTPClient:
 
     def evaluate(self, url: str, body: str) -> LocalTTPResult:
         user_message = self.user_template.replace("#URL#", url).replace("#Body#", body)
+        # Local instruct models are prone to verbose reasoning; make the required output format explicit.
+        user_message = (
+            user_message
+            + "\n\nIMPORTANT: Output ONLY a single label dict in the exact form "
+            + "<Label>{H: <None|Topical-*>|Intent-*>, IH: <...>, SE: <...>, IL: <...>, SI: <...>}</Label> "
+            + "and nothing else."
+        )
         prompt = self._format_prompt(user_message)
 
         try:
-            inputs = self.tokenizer(prompt, return_tensors="pt")
+            max_len = self.max_input_tokens
+            if max_len is None:
+                # tokenizer.model_max_length is sometimes a huge sentinel; clamp to something reasonable by default.
+                tmax = int(getattr(self.tokenizer, "model_max_length", 0) or 0)
+                max_len = tmax if 0 < tmax <= 32768 else 8192
+            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=int(max_len))
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             with self._torch.no_grad():
                 out = self.model.generate(
                     **inputs,
                     max_new_tokens=self.max_new_tokens,
+                    min_new_tokens=8,
                     do_sample=False,
                     temperature=0.0,
                     pad_token_id=self.tokenizer.pad_token_id,
@@ -207,12 +261,18 @@ class TransformersTTPClient:
                 )
             generated = out[0][inputs["input_ids"].shape[-1] :]
             text = self.tokenizer.decode(generated, skip_special_tokens=True).strip()
-            lbl = self._parse_response(text)
+            try:
+                lbl = self._parse_response(text)
+            except Exception as e:
+                raise RuntimeError(f"Failed to parse TTP label. output_head={text[:240]!r}. error={e}") from e
             return LocalTTPResult(predicted_label=lbl, raw_response=text)
         except Exception as e:
             return LocalTTPResult(predicted_label=HarmLabel(), raw_response=None, error=str(e))
 
     def predict(self, text: str) -> HarmLabel:
         r = self.evaluate(url="ttp://text", body=text)
+        # Do not silently fail-open: callers (e.g. evaluation scripts) should count failures.
+        if r.error:
+            raise RuntimeError(r.error)
         return r.predicted_label
 

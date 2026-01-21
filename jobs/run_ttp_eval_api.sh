@@ -55,27 +55,9 @@ mkdir -p results/codecarbon
 export CODECARBON_OUTPUT_DIR="${CODECARBON_OUTPUT_DIR:-$HOME/TowardsSaferPretraining/results/codecarbon}"
 export CODECARBON_EXPERIMENT_ID="${CODECARBON_EXPERIMENT_ID:-${SLURM_JOB_ID:-}}"
 
-# Ensure required keys exist
-if [ -z "${OPENAI_API_KEY:-}" ]; then
-  echo "Error: OPENAI_API_KEY is required for openai_ttp setup" >&2
-  exit 1
-fi
-if [ -z "${PERSPECTIVE_API_KEY:-}" ]; then
-  echo "Error: PERSPECTIVE_API_KEY is required for perspective setup" >&2
-  exit 1
-fi
+# This job previously ran Perspective API for Table 4. Perspective is omitted by default.
+echo "Deprecated: jobs/run_ttp_eval_api.sh relied on Perspective API, which is omitted by default now."
+echo "Use jobs/run_ttp_eval.sh for TTP on TTP-Eval, or scripts/evaluate_ttp_eval.py with explicit --setups."
+exit 1
 
-# Table 4: Perspective + OpenAI TTP on TTP-Eval (toxic dimension)
-if python scripts/evaluate_ttp_eval.py \
-  --data-path data/TTP-Eval/TTPEval.tsv \
-  --setups perspective openai_ttp \
-  --perspective-key "$PERSPECTIVE_API_KEY" \
-  --openai-key "$OPENAI_API_KEY" \
-  --dimension toxic \
-  --output results/ttp_eval_baselines/table4_perspective_openai_ttp.json; then
-    echo "Table 4 API evaluation complete!"
-    echo "Results saved to: results/ttp_eval_baselines/table4_perspective_openai_ttp.json"
-else
-    echo "Error: Table 4 API evaluation failed" >&2
-    exit 1
-fi
+# (Intentionally no-op)

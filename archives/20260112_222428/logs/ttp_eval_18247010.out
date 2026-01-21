@@ -1,0 +1,31 @@
+Loading TTP-Eval dataset from data/TTP-Eval/TTPEval.tsv...
+Evaluating 393 samples with gpt-4o...
+
+============================================================
+Evaluation Metrics (Dimension: toxic)
+Total Samples: 393
+============================================================
+
+Overall:
+  Precision: 0.931
+  Recall:    0.284
+  F1:        0.435
+
+Per-Harm:
+  H  : P=0.917, R=0.355, F1=0.512
+  IH : P=0.667, R=0.114, F1=0.195
+  SE : P=1.000, R=0.342, F1=0.510
+  IL : P=0.800, R=0.286, F1=0.421
+  SI : P=0.500, R=0.083, F1=0.143
+============================================================
+
+
+API Statistics:
+  Total requests: 161
+  Failed requests: 232
+  Total tokens: 669251
+  Estimated cost: $5.35
+
+Results saved to results/ttp_eval/ttp_results.json
+TTP Evaluation Complete!
+Results saved to: results/ttp_eval/ttp_results.json

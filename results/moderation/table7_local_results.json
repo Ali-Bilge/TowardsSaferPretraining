@@ -1,0 +1,55 @@
+{
+  "evaluation_config": {
+    "dataset": "data/moderation-api-release/data/samples-1680.jsonl.gz",
+    "total_samples": 1680,
+    "baselines": [
+      "HarmFormer"
+    ],
+    "perspective_threshold": 0.4,
+    "device": "cuda"
+  },
+  "results": [
+    {
+      "classifier": "HarmFormer",
+      "total_samples": 1680,
+      "failed_samples": 0,
+      "evaluated_samples": 1680,
+      "metrics": {
+        "overall": {
+          "precision": 0.6390101892285298,
+          "recall": 0.8409961685823755,
+          "f1": 0.7262200165425972
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.6781609195402298,
+            "recall": 0.3390804597701149,
+            "f1": 0.4521072796934866
+          },
+          "IH": {
+            "precision": 0.5232558139534884,
+            "recall": 0.25862068965517243,
+            "f1": 0.3461538461538462
+          },
+          "SE": {
+            "precision": 0.759375,
+            "recall": 0.46551724137931033,
+            "f1": 0.5771971496437054
+          },
+          "IL": {
+            "precision": 0.10526315789473684,
+            "recall": 0.0038314176245210726,
+            "f1": 0.007393715341959334
+          },
+          "SI": {
+            "precision": 0.7142857142857143,
+            "recall": 0.04789272030651341,
+            "f1": 0.08976660682226213
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 1680
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+Loading checkpoint shards:   0%|          | 0/12 [00:00<?, ?it/s]Loading checkpoint shards:   8%|▊         | 1/12 [00:02<00:27,  2.51s/it]Loading checkpoint shards:  17%|█▋        | 2/12 [00:05<00:26,  2.61s/it]Loading checkpoint shards:  25%|██▌       | 3/12 [00:07<00:23,  2.61s/it]Loading checkpoint shards:  33%|███▎      | 4/12 [00:10<00:21,  2.65s/it]Loading checkpoint shards:  42%|████▏     | 5/12 [00:13<00:18,  2.64s/it]Loading checkpoint shards:  50%|█████     | 6/12 [00:15<00:15,  2.64s/it]Loading checkpoint shards:  58%|█████▊    | 7/12 [00:18<00:13,  2.66s/it]Loading checkpoint shards:  67%|██████▋   | 8/12 [00:21<00:10,  2.65s/it]Loading checkpoint shards:  75%|███████▌  | 9/12 [00:22<00:07,  2.37s/it]Loading checkpoint shards:  83%|████████▎ | 10/12 [00:24<00:04,  2.16s/it]Loading checkpoint shards:  92%|█████████▏| 11/12 [00:31<00:03,  3.52s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:31<00:00,  2.53s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:31<00:00,  2.62s/it]
+Some parameters are on the meta device because they were offloaded to the cpu.
+[codecarbon WARNING @ 03:42:40] Multiple instances of codecarbon are allowed to run at the same time.
+The following generation flags are not valid and may be ignored: ['temperature']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+Traceback (most recent call last):
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
+    response.raise_for_status()
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-32B/resolve/main/tokenizer_config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/transformers/utils/hub.py", line 479, in cached_files
+    hf_hub_download(
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
+    raise head_call_error
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error. (Request ID: Root=1-69703d41-28cea1cd372078035903a923;aa123082-57b2-4cea-9a03-f7875356c59e)
+
+Repository Not Found for url: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-32B/resolve/main/tokenizer_config.json.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/scripts/evaluate_ttp_eval.py", line 206, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/scripts/evaluate_ttp_eval.py", line 166, in main
+    TransformersTTPClient(
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/src/clients/ttp_local.py", line 79, in __init__
+    tok = AutoTokenizer.from_pretrained(model_id, use_fast=True, **auth_kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/transformers/models/auto/tokenization_auto.py", line 1089, in from_pretrained
+    tokenizer_config = get_tokenizer_config(pretrained_model_name_or_path, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/transformers/models/auto/tokenization_auto.py", line 921, in get_tokenizer_config
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/transformers/utils/hub.py", line 322, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/transformers/utils/hub.py", line 511, in cached_files
+    raise OSError(
+OSError: deepseek-ai/DeepSeek-R1-Distill-Llama-32B is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
+If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
+Error: Table 4 local LLM evaluation failed (LLaMa 32B)
