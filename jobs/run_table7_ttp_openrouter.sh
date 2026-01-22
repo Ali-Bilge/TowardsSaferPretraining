@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=baselines_api
+#SBATCH --job-name=table7_ttp_or
 #SBATCH --partition=rome
-#SBATCH --time=08:00:00
+#SBATCH --time=04:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
-#SBATCH --output=logs/baselines_api_%j.out
-#SBATCH --error=logs/baselines_api_%j.err
+#SBATCH --output=logs/table7_ttp_openrouter_%j.out
+#SBATCH --error=logs/table7_ttp_openrouter_%j.err
 
 set -euo pipefail
 
@@ -34,16 +34,11 @@ source venv/bin/activate || {
     exit 1
 }
 
-# Load API keys from .env if present, otherwise from example.env.
+# Load API keys from .env
 if [ -f ".env" ]; then
   set -a
   # shellcheck disable=SC1091
   source ".env"
-  set +a
-elif [ -f "example.env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "example.env"
   set +a
 fi
 
@@ -55,26 +50,21 @@ mkdir -p results/codecarbon
 export CODECARBON_OUTPUT_DIR="${CODECARBON_OUTPUT_DIR:-$HOME/TowardsSaferPretraining/results/codecarbon}"
 export CODECARBON_EXPERIMENT_ID="${CODECARBON_EXPERIMENT_ID:-${SLURM_JOB_ID:-}}"
 
-# Ensure required keys exist
-if [ -z "${OPENAI_API_KEY:-}" ]; then
-  echo "Error: OPENAI_API_KEY is required for TTP baseline" >&2
-  exit 1
-fi
-if [ -z "${PERSPECTIVE_API_KEY:-}" ]; then
-  echo "Error: PERSPECTIVE_API_KEY is required for Perspective baseline" >&2
+# Ensure OpenRouter key exists
+if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+  echo "Error: OPENROUTER_API_KEY is required" >&2
   exit 1
 fi
 
-# Run API baselines (Table 7 API rows): Perspective + TTP on full dataset
+# Run TTP via OpenRouter on OpenAI Moderation dataset (Table 7)
 if python scripts/evaluate_openai_moderation.py \
-  --baselines perspective ttp \
+  --baselines ttp_openrouter \
+  --openrouter-model "openai/gpt-4o" \
   --device cpu \
-  --openai-key "$OPENAI_API_KEY" \
-  --perspective-key "$PERSPECTIVE_API_KEY" \
-  --output results/moderation/table7_api_results.json; then
-    echo "Baselines (API) complete!"
-    echo "Results saved to: results/moderation/table7_api_results.json"
+  --output results/moderation/table7_ttp_openrouter.json; then
+    echo "Table 7 TTP (OpenRouter) complete!"
+    echo "Results saved to: results/moderation/table7_ttp_openrouter.json"
 else
-    echo "Error: Baselines (API) failed" >&2
+    echo "Error: Table 7 TTP (OpenRouter) failed" >&2
     exit 1
 fi
