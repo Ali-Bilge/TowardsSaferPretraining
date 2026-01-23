@@ -1,0 +1,55 @@
+{
+  "evaluation_config": {
+    "dataset": "data/moderation-api-release/data/samples-1680.jsonl.gz",
+    "total_samples": 1680,
+    "baselines": [
+      "TTP (OpenRouter: openai/gpt-4o)"
+    ],
+    "perspective_threshold": 0.4,
+    "device": "cpu"
+  },
+  "results": [
+    {
+      "classifier": "TTP (OpenRouter: openai/gpt-4o)",
+      "total_samples": 1680,
+      "failed_samples": 0,
+      "evaluated_samples": 1680,
+      "metrics": {
+        "overall": {
+          "precision": 0.7971014492753623,
+          "recall": 0.421455938697318,
+          "f1": 0.5513784461152882
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.8449612403100775,
+            "recall": 0.20881226053639848,
+            "f1": 0.3348694316436252
+          },
+          "IH": {
+            "precision": 0.6511627906976745,
+            "recall": 0.10727969348659004,
+            "f1": 0.18421052631578946
+          },
+          "SE": {
+            "precision": 0.864406779661017,
+            "recall": 0.19540229885057472,
+            "f1": 0.31875000000000003
+          },
+          "IL": {
+            "precision": 0.75,
+            "recall": 0.011494252873563218,
+            "f1": 0.022641509433962263
+          },
+          "SI": {
+            "precision": 0.7777777777777778,
+            "recall": 0.02681992337164751,
+            "f1": 0.05185185185185185
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 1680
+      }
+    }
+  ]
+}
