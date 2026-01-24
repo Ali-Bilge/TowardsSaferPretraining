@@ -46,8 +46,8 @@ class TransformersTTPClient:
         device: Optional[str] = None,
         dtype: Literal["auto", "float16", "bfloat16"] = "auto",
         quantization: Literal["none", "8bit", "4bit"] = "none",
-        # Keep this small: we only need a short <Label> dict, and larger values can OOM on 40GB GPUs.
-        max_new_tokens: int = 128,
+        # Allow more tokens for models that produce verbose reasoning before the label
+        max_new_tokens: int = 512,
     ):
         try:
             import torch  # type: ignore
@@ -177,12 +177,16 @@ class TransformersTTPClient:
                         r = "model" if (map_assistant_to_model and role == "assistant") else role
                         messages.append({"role": r, "content": content})
                     messages.append({"role": "user", "content": user_message})
-                    return self.tokenizer.apply_chat_template(  # type: ignore[attr-defined]
+                    formatted = self.tokenizer.apply_chat_template(  # type: ignore[attr-defined]
                         messages,
                         tokenize=False,
                         add_generation_prompt=True,
                     )
-                except Exception:
+                    # Debug: print the formatted prompt for troubleshooting
+                    print(f"[DEBUG] Using chat template for {self.model_id}, map_assistant={map_assistant_to_model}", file=__import__('sys').stderr)
+                    return formatted
+                except Exception as e:
+                    print(f"[DEBUG] Chat template failed for {self.model_id}, map_assistant={map_assistant_to_model}: {e}", file=__import__('sys').stderr)
                     continue
 
         # Fallback: represent the ChatML conversation explicitly for a plain-text CausalLM.
@@ -190,26 +194,57 @@ class TransformersTTPClient:
         for role, content in self._prefix:
             parts.append(f"{role.upper()}:\n{content}")
         parts.append(f"USER:\n{user_message}")
+        print(f"[DEBUG] Using fallback prompt format for {self.model_id}", file=__import__('sys').stderr)
         return "\n\n".join(parts)
 
     def _parse_response(self, content: str) -> HarmLabel:
-        label_match = re.search(r"<Label>\s*({.*?})\s*</Label>", content, re.DOTALL)
+        content = content.strip()
+
+        # First try: exact <Label> tag format
+        label_match = re.search(r"<Label>\s*({.*?})\s*</Label>", content, re.DOTALL | re.IGNORECASE)
         label_str: Optional[str] = None
         if label_match:
             label_str = label_match.group(1)
         else:
-            stripped = content.strip()
-            if stripped.startswith("{") and stripped.endswith("}"):
-                label_str = stripped
-            else:
-                for m in re.finditer(r"\{[\s\S]*?\}", content):
-                    candidate = m.group(0)
-                    if all(k in candidate for k in ["H", "IH", "SE", "IL", "SI"]):
-                        label_str = candidate
-                        break
+            # Second try: look for any JSON-like dict containing the required keys
+            for m in re.finditer(r"\{[\s\S]*?\}", content):
+                candidate = m.group(0)
+                if all(k in candidate for k in ["H", "IH", "SE", "IL", "SI"]):
+                    label_str = candidate
+                    break
+
+            # Third try: if content starts with a brace and contains the keys
+            if not label_str and content.startswith("{") and all(k in content for k in ["H", "IH", "SE", "IL", "SI"]):
+                # Find the closing brace
+                brace_count = 0
+                end_pos = 0
+                for i, char in enumerate(content):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_pos = i + 1
+                            break
+                if end_pos > 0:
+                    label_str = content[:end_pos]
 
         if not label_str:
-            raise ValueError(f"Could not find label dict in response: {content[:200]}")
+            # Last resort: try to extract from natural language response
+            # Look for patterns like "H: None", "IH: Intent-1", etc.
+            extracted = {}
+            for key in ["H", "IH", "SE", "IL", "SI"]:
+                pattern = rf"{key}\s*:\s*([^{{}}\n,]*)"
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    value = match.group(1).strip().strip('"\']')
+                    if value:
+                        extracted[key] = value.split("-")[0].lower()
+            if extracted and len(extracted) >= 3:  # At least 3 keys found
+                label_str = str(extracted).replace("'", '"')
+
+        if not label_str:
+            raise ValueError(f"Could not find label dict in response: {content[:300]}")
 
         try:
             parsed = ast.literal_eval(label_str)
@@ -219,15 +254,34 @@ class TransformersTTPClient:
                 label_dict = json.loads(parsed)
             else:
                 raise ValueError(f"Expected dict or string from literal_eval, got {type(parsed)}")
-        except (ValueError, SyntaxError):
-            label_dict = json.loads(label_str)
+        except (ValueError, SyntaxError, json.JSONDecodeError):
+            # Try to fix common issues
+            label_str = label_str.replace("'", '"')  # Replace single quotes with double
+            try:
+                label_dict = json.loads(label_str)
+            except json.JSONDecodeError:
+                # Try to parse individual key-value pairs
+                label_dict = {}
+                for key in ["H", "IH", "SE", "IL", "SI"]:
+                    match = re.search(rf'"{key}"\s*:\s*"([^"]*)"', label_str)
+                    if match:
+                        value = match.group(1).split("-")[0].lower()
+                        label_dict[key] = value
+                    else:
+                        match = re.search(rf"{key}\s*:\s*([^,}}]+)", label_str)
+                        if match:
+                            value = match.group(1).strip().strip('"\']').split("-")[0].lower()
+                            label_dict[key] = value
+
+        if not label_dict:
+            raise ValueError(f"Failed to parse label dict from: {label_str}")
 
         clean: Dict[str, Any] = {}
         for k, v in label_dict.items():
             if isinstance(v, str):
                 clean[k] = v.split("-")[0].lower()
             else:
-                clean[k] = v
+                clean[k] = str(v).lower()
         return HarmLabel.from_dict(clean)
 
     def evaluate(self, url: str, body: str) -> LocalTTPResult:
@@ -235,9 +289,10 @@ class TransformersTTPClient:
         # Local instruct models are prone to verbose reasoning; make the required output format explicit.
         user_message = (
             user_message
-            + "\n\nIMPORTANT: Output ONLY a single label dict in the exact form "
-            + "<Label>{H: <None|Topical-*>|Intent-*>, IH: <...>, SE: <...>, IL: <...>, SI: <...>}</Label> "
-            + "and nothing else."
+            + "\n\n# OUTPUT FORMAT\n"
+            + "You must respond with ONLY the label in this exact format:\n"
+            + "<Label>{H: None|Topical-i|Intent-i, IH: None|Topical-i|Intent-i, SE: None|Topical-i|Intent-i, IL: None|Topical-i|Intent-i, SI: None|Topical-i|Intent-i}</Label>\n"
+            + "Do not include any other text, reasoning, or explanation."
         )
         prompt = self._format_prompt(user_message)
 
@@ -247,13 +302,18 @@ class TransformersTTPClient:
                 # tokenizer.model_max_length is sometimes a huge sentinel; clamp to something reasonable by default.
                 tmax = int(getattr(self.tokenizer, "model_max_length", 0) or 0)
                 max_len = tmax if 0 < tmax <= 32768 else 8192
+
+            print(f"[DEBUG] Prompt length: {len(prompt)} chars, max_input_tokens: {max_len}", file=__import__('sys').stderr)
             inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=int(max_len))
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            input_token_count = inputs["input_ids"].shape[-1]
+            print(f"[DEBUG] Tokenized to {input_token_count} tokens", file=__import__('sys').stderr)
+
             with self._torch.no_grad():
                 out = self.model.generate(
                     **inputs,
                     max_new_tokens=self.max_new_tokens,
-                    min_new_tokens=8,
+                    min_new_tokens=16,
                     do_sample=False,
                     temperature=0.0,
                     pad_token_id=self.tokenizer.pad_token_id,
@@ -261,9 +321,11 @@ class TransformersTTPClient:
                 )
             generated = out[0][inputs["input_ids"].shape[-1] :]
             text = self.tokenizer.decode(generated, skip_special_tokens=True).strip()
+            print(f"[DEBUG] Generated {len(text)} chars of output", file=__import__('sys').stderr)
             try:
                 lbl = self._parse_response(text)
             except Exception as e:
+                print(f"[DEBUG] Failed to parse TTP label from {self.model_id}. Raw output: {text[:500]!r}", file=__import__('sys').stderr)
                 raise RuntimeError(f"Failed to parse TTP label. output_head={text[:240]!r}. error={e}") from e
             return LocalTTPResult(predicted_label=lbl, raw_response=text)
         except Exception as e:

@@ -133,6 +133,14 @@ class GeminiTTPClient:
 
     def evaluate(self, url: str, body: str) -> TTPResult:
         user_message = self.user_template.replace("#URL#", url).replace("#Body#", body)
+        # Gemini also needs explicit output format instructions
+        user_message = (
+            user_message
+            + "\n\n# OUTPUT FORMAT\n"
+            + "You must respond with ONLY the label in this exact format:\n"
+            + "<Label>{H: None|Topical-i|Intent-i, IH: None|Topical-i|Intent-i, SE: None|Topical-i|Intent-i, IL: None|Topical-i|Intent-i, SI: None|Topical-i|Intent-i}</Label>\n"
+            + "Do not include any other text, reasoning, or explanation."
+        )
 
         last_text: Optional[str] = None
         for attempt in range(self.max_retries):
@@ -206,43 +214,93 @@ class GeminiTTPClient:
         return result.predicted_label
 
     def _parse_response(self, content: str) -> tuple[HarmLabel, Optional[str]]:
-        reasoning_match = re.search(r"<Reasoning>(.*?)</Reasoning>", content, re.DOTALL)
+        reasoning_match = re.search(r"<Reasoning>(.*?)</Reasoning>", content, re.DOTALL | re.IGNORECASE)
         reasoning = reasoning_match.group(1).strip() if reasoning_match else None
 
-        label_match = re.search(r"<Label>\s*({.*?})\s*</Label>", content, re.DOTALL)
-        label_str: Optional[str] = label_match.group(1) if label_match else None
+        content = content.strip()
+
+        # First try: exact <Label> tag format
+        label_match = re.search(r"<Label>\s*({.*?})\s*</Label>", content, re.DOTALL | re.IGNORECASE)
+        label_str: Optional[str] = None
+        if label_match:
+            label_str = label_match.group(1)
+        else:
+            # Second try: look for any JSON-like dict containing the required keys
+            for m in re.finditer(r"\{[\s\S]*?\}", content):
+                candidate = m.group(0)
+                if all(k in candidate for k in ["H", "IH", "SE", "IL", "SI"]):
+                    label_str = candidate
+                    break
+
+            # Third try: if content starts with a brace and contains the keys
+            if not label_str and content.startswith("{") and all(k in content for k in ["H", "IH", "SE", "IL", "SI"]):
+                # Find the closing brace
+                brace_count = 0
+                end_pos = 0
+                for i, char in enumerate(content):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_pos = i + 1
+                            break
+                if end_pos > 0:
+                    label_str = content[:end_pos]
 
         if not label_str:
-            stripped = content.strip()
-            if stripped.startswith("{") and stripped.endswith("}"):
-                label_str = stripped
-            else:
-                for m in re.finditer(r"\{[\s\S]*?\}", content):
-                    candidate = m.group(0)
-                    if all(k in candidate for k in ["H", "IH", "SE", "IL", "SI"]):
-                        label_str = candidate
-                        break
+            # Last resort: try to extract from natural language response
+            # Look for patterns like "H: None", "IH: Intent-1", etc.
+            extracted = {}
+            for key in ["H", "IH", "SE", "IL", "SI"]:
+                pattern = rf"{key}\s*:\s*([^{{}}\n,]*)"
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    value = match.group(1).strip().strip('"\']')
+                    if value:
+                        extracted[key] = value.split("-")[0].lower()
+            if extracted and len(extracted) >= 3:  # At least 3 keys found
+                label_str = str(extracted).replace("'", '"')
 
         if not label_str:
-            raise ValueError(f"Could not find label dict in response: {content[:200]}")
+            raise ValueError(f"Could not find label dict in response: {content[:300]}")
 
         try:
             parsed = ast.literal_eval(label_str)
             if isinstance(parsed, dict):
-                label_dict: Dict[str, Any] = parsed
+                label_dict = parsed
             elif isinstance(parsed, str):
                 label_dict = json.loads(parsed)
             else:
                 raise ValueError(f"Expected dict or string from literal_eval, got {type(parsed)}")
-        except (ValueError, SyntaxError):
-            label_dict = json.loads(label_str)
+        except (ValueError, SyntaxError, json.JSONDecodeError):
+            # Try to fix common issues
+            label_str = label_str.replace("'", '"')  # Replace single quotes with double
+            try:
+                label_dict = json.loads(label_str)
+            except json.JSONDecodeError:
+                # Try to parse individual key-value pairs
+                label_dict = {}
+                for key in ["H", "IH", "SE", "IL", "SI"]:
+                    match = re.search(rf'"{key}"\s*:\s*"([^"]*)"', label_str)
+                    if match:
+                        value = match.group(1).split("-")[0].lower()
+                        label_dict[key] = value
+                    else:
+                        match = re.search(rf"{key}\s*:\s*([^,}}]+)", label_str)
+                        if match:
+                            value = match.group(1).strip().strip('"\']').split("-")[0].lower()
+                            label_dict[key] = value
+
+        if not label_dict:
+            raise ValueError(f"Failed to parse label dict from: {label_str}")
 
         clean: Dict[str, Any] = {}
         for k, v in label_dict.items():
             if isinstance(v, str):
                 clean[k] = v.split("-")[0].lower()
             else:
-                clean[k] = v
+                clean[k] = str(v).lower()
         return HarmLabel.from_dict(clean), reasoning
 
 

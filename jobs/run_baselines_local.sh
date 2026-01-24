@@ -39,6 +39,9 @@ source venv/bin/activate || {
     exit 1
 }
 
+# Load environment variables from .env file
+set -a; source .env 2>/dev/null || true; set +a
+
 # Create output directories
 mkdir -p results/moderation
 mkdir -p results/codecarbon

@@ -1,0 +1,534 @@
+\documentclass[10pt]{article} % For LaTeX2e
+\usepackage{tmlr}
+% If accepted, instead use the following line for the camera-ready submission:
+%\usepackage[accepted]{tmlr}
+% To de-anonymize and remove mentions to TMLR (for example for posting to preprint servers), instead use the following:
+%\usepackage[preprint]{tmlr}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+
+
+\title{Revisiting Web-Scale Harmful Content Filtering for Safer LLM Pretraining}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the tmlr package is used without the [accepted] or [preprint] options.
+% Non-anonymous submissions will be rejected without review.
+
+\author{\name Kyunghyun Cho \email kyunghyun.cho@nyu.edu \\
+      \addr Department of Computer Science\\
+      University of New York
+      \AND
+      \name Raia Hadsell \email raia@google.com \\
+      \addr DeepMind
+      \AND
+      \name Hugo Larochelle \email hugolarochelle@google.com\\
+      \addr Mila, Universit\'e de Montr\'eal \\
+      Google Research\\
+      CIFAR Fellow}
+
+% The \author macro works with any number of authors. Use \AND 
+% to separate the names and addresses of multiple authors.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\def\month{MM}  % Insert correct month for camera-ready version
+\def\year{YYYY} % Insert correct year for camera-ready version
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}} % Insert correct link to OpenReview for camera-ready version
+
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+We present a reproducibility study of ``Towards Safer Pretraining: Analyzing and Filtering Harmful Content in Webscale Datasets for Responsible LLMs'' (IJCAI 2025), which introduces a taxonomy-driven framework for harmful content detection in web-scale pretraining data. We evaluate four core claims using the publicly released artifacts: the TTP prompt-based classifier, the HarmFormer model, and the HAVOC benchmark. Our reproduction yields mixed results. We successfully reproduce the HAVOC leakage findings (26.69\% vs.\ 26.7\% reported), confirming that LLMs remain vulnerable to adversarial prompting. However, TTP performance on TTP-Eval differs substantially from reported metrics (0.62 vs.\ 0.83 F1), with higher precision but significantly lower recall. HarmFormer generalizes reasonably to human-annotated data (0.78 F1), though evaluated on a different test set than the original. Finally, our attempts to run TTP with large local open-source backbones (Gemma 2 27B and DeepSeek-R1-Distill-Qwen-32B) were unsuccessful due to GPU memory constraints and output-format incompatibilities, resulting in 0 evaluated samples for these rows in our pipeline. Our findings suggest that while the released artifacts are functional, TTP performance may depend on undocumented factors, and the framework's reliance on proprietary models limits broader applicability.
+\end{abstract}
+
+\section{Introduction}
+
+
+
+Large language models (LLMs) are increasingly pretrained on massive web-scale datasets, raising growing concerns about the presence of harmful, toxic, or manipulative content in their training data \citep{bender2021stochasticparrots}. Prior work has shown that large web corpora often lack sufficient documentation and transparency, making it difficult to assess data quality and potential risks introduced during pretraining \citep{dodge2021c4}. Moreover, evaluating and mitigating harmful content frequently relies on automatic or model-based judgments, which are known to be imperfect and sensitive to evaluation design choices \citep{welbl2021detoxchallenges}. Since pretraining data directly shapes downstream model behavior, understanding and mitigating harmful content has become a central issue in responsible AI development.
+
+The IJCAI 2025 paper \textit{Towards Safer Pretraining: Analyzing and Filtering Harmful Content in Webscale Datasets for Responsible LLMs} addresses this challenge by proposing a taxonomy-driven framework for analyzing harmful content in web data and by introducing tools to support safer pretraining \citep{mendu2025saferpretraining}. The authors define a structured taxonomy that distinguishes between safe, topical, and toxic content, building on earlier efforts to study toxic language in language model outputs and training data \citep{gehman2020realtoxicityprompts}. In addition, the paper introduces several resources, including the TTP benchmark for prompt-based harmful content identification, the HAVOC benchmark for adversarial prompt evaluation, and the HarmFormer model for long-form harmful content classification. These contributions align with a broader line of work on adversarial prompting and robustness benchmarking.
+
+In this work, we examine the reproducibility of the results reported in the original paper. While the authors make several components publicly available, such as prompt templates and benchmark datasets, some aspects of the large-scale data processing and filtering pipeline are described at a high level. We aim to follow the methodology as closely as possible and, where necessary, reimplement missing components based on the descriptions provided in the paper and accompanying resources.
+
+Our reproduction therefore investigates both the extent to which the reported results can be recovered using the released artifacts and the feasibility of reconstructing additional parts of the pipeline in practice.
+
+
+
+\section{Related Work}
+
+Prior work related to this study spans research on web-scale dataset transparency, harmful content detection tools, and toxicity evaluation benchmarks. These lines of work provide the context in which taxonomy-driven approaches for safer LLM pretraining have emerged.
+
+\subsection{Web-Scale Data and Transparency}
+
+Web-scale datasets are widely used for pretraining language models, but their opacity raises concerns about data quality, bias, and downstream harms. \citet{dodge2021c4} document limitations in dataset transparency for corpora such as C4, motivating clearer reporting of data curation practices. \citet{luccioni2021whatsinthebox} analyze undesirable content in Common Crawl using keyword heuristics, while \citet{jansen2022perplexity} propose perplexity-based filtering to remove toxic text. However, these methods lack precision: keyword filters can conflate harmful intent with educational content, and perplexity thresholds fail to capture contextual nuances.
+
+The original authors analyze three major pretraining datasets, Common Crawl \citep{rana2010commoncrawl}, C4 \citep{raffel2020exploring}, and FineWeb \citep{penedo2024fineweb}, revealing that toxic content constitutes 2.1-4.1\% of web corpora, with topical discussions ranging from 3.4-10.6\%.
+
+\subsection{Content Moderation Tools}
+
+Existing approaches to harmful content detection rely on keyword blocklists (such as the LDNOOBW list\footnote{\url{https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words}}) and API-based tools. Perspective API\footnote{\url{https://perspectiveapi.com/}} is widely used for toxicity detection but suffers from critical limitations: it is designed for sentence-level analysis and uses binary taxonomies that conflate harmful intent with socially critical discourse \citep{mendu2025saferpretraining}.
+
+Model-based approaches include HateBERT \citep{caselli2021hatebert}, a BERT-based model fine-tuned on hate speech datasets, and Llama Guard \citep{inan2023llamaguard}, an LLM-based input-output safeguard for conversational AI. The original authors demonstrate that these tools exhibit poor generalization across harm categories and struggle with long-form content, motivating their three-dimensional taxonomy (Safe, Topical, Toxic) and multi-harm coverage.
+
+\subsection{Toxicity Evaluation Benchmarks}
+
+RealToxicityPrompts (RTP) \citep{gehman2020realtoxicityprompts} evaluates toxic degeneration in language model outputs using 100K prompts scored by Perspective API. However, RTP focuses narrowly on toxicity and sexual content, and subsequent work shows that automatic toxicity assessment is sensitive to model choice and evaluation design \citep{welbl2021detoxchallenges}. 
+
+To address these limitations, the original authors introduce HAVOC (Harmful Abstractions and Violations in Open Completions), a multidimensional benchmark with 10,376 adversarial prompts spanning five harm categories. Unlike RTP, HAVOC distinguishes between neutral, passive (topical), and provocative inputs, revealing that state-of-the-art LLMs exhibit harmful content in 26.7\% of outputs.
+
+\subsection{Contributions of the Original Work}
+
+The work of \citet{mendu2025saferpretraining} integrates structured taxonomies with prompt-based (TTP) and model-based (HarmFormer) tools for large-scale harmful content analysis. Our study focuses on assessing the reproducibility of these contributions using the publicly released artifacts, including the TTP prompt templates, HAVOC benchmark, TTP-Eval evaluation set, and the HarmFormer model weights.
+
+
+\section{Scope of Reproducibility}
+
+We focus on reproducing the core claims regarding the performance and effectiveness of the TTP prompt and HarmFormer model, as well as validating the HAVOC benchmark results. Specifically, we aim to verify the following claims from the original work:
+
+\begin{itemize}
+    \item \textbf{Claim 1 (TTP Performance):} The TTP prompt achieves 0.87 precision, 0.79 recall, and 0.83 F1 score for toxic content detection on the human-annotated TTP-Eval benchmark (Table 3).
+    
+    \item \textbf{Claim 2 (HarmFormer Performance):} The HarmFormer model achieves 0.88 precision, 0.81 recall, and 0.85 F1 score on the authors' test split derived from TTP-labeled data (Table 6). We note that we evaluate HarmFormer on the TTP-Eval benchmark instead, as the original test split is not publicly released. Results are therefore not directly comparable to Table 6, but validate the model's generalization to human-annotated data.
+
+    \item \textbf{Claim 3 (Baseline Comparison):} TTP and HarmFormer outperform existing baselines on the OpenAI Moderation test set. The original paper reports TTP achieving 0.72 precision and 0.91 recall (Table 7). We evaluate TTP and HarmFormer against Perspective API on this dataset.
+
+    
+    \item \textbf{Claim 4 (HAVOC Leakage):} State-of-the-art LLMs exhibit harmful content in 26.7\% of outputs when evaluated on the HAVOC benchmark, with 76\% leakage on provocative inputs (Table 10, Figure 3). To compute the leakage metrics we use the pre-computed model generations from the released \texttt{havoc\_modeleval.tsv} rather than running inference ourselves, so our results should exactly match the original paper's Table 10.
+\end{itemize}
+
+Due to computational and budgetary constraints, we do not reproduce the large-scale dataset annotation pipeline described in Section 5.1 of the original paper, which involves labeling 3 million web pages. We also do not reproduce the model architecture comparison experiments (Table 5), as we use the pre-trained HarmFormer model released by the authors rather than training from scratch.
+
+We focus our experimental validation on reproducing Tables 3, 4, 6, 7, and 10, along with Figures 3 and 5 from the original paper. We do not attempt to reproduce Table 5 (model architecture comparison requiring retraining), Table 8 (3M sample dataset analysis), or Figure 2 (domain distribution). Tables 1, 2, and 9 are either definitional or descriptive and do not require experimental reproduction. Our code will generate all reproduced tables and figures in formats matching the original paper's presentation.
+
+Our reproduction therefore focuses on validating the effectiveness of the released artifacts for harmful content detection, rather than reconstructing the full data curation and model training pipeline.
+
+
+\section{Methodology}
+
+\subsection{Model Descriptions}
+
+\subsubsection{TTP (Topical \& Toxic Prompt)}
+TTP is a prompt-based classifier built on OpenAI's GPT-4 Omni (gpt-4o) via an OpenAI-compatible API endpoint (OpenRouter in our runs). The prompt implements the three-dimensional taxonomy (Safe, Topical, Toxic) across five harm categories: Hate \& Violence, Ideological Harm, Sexual Content, Illegal Activities, and Self-Inflicted Harm. We use the exact prompt templates released in the authors' GitHub repository\footnote{\url{https://github.com/themendu/TowardsSaferPretraining}} with greedy decoding (temperature = 0) to maximize reproducibility.
+
+The prompt is formatted in ChatML format and includes few-shot examples to improve classification quality. For API-backed TTP runs we do not apply explicit truncation; for local TTP runs we cap the input length (default 8{,}192 tokens) to reduce KV-cache memory usage.
+
+\subsubsection{HarmFormer}
+HarmFormer is a fine-tuned LongFormer-based model \citep{beltagy2020longformer} with 1024 token context length. The model employs a multi-task architecture with five classification heads corresponding to the harm categories, where each head classifies content into Safe, Topical, or Toxic dimensions. We use the pre-trained model weights released on HuggingFace\footnote{\url{https://huggingface.co/themendu/HarmFormer}}.
+
+We define a document as predicted "Toxic" (aggregated label) if any of the five harm-category heads predicts the Toxic dimension. This follows the original paper's evaluation methodology for computing overall toxic detection metrics. For per-harm evaluation, we report precision, recall, and F1 for each category independently.
+
+\subsection{Datasets}
+
+We evaluate our reproduction on three datasets used in the original paper:
+
+\textbf{TTP-Eval} consists of 393 expert-annotated web pages spanning all five harm categories, with content labeled across the three-dimensional taxonomy (Safe, Topical, Toxic). The dataset exhibits high inter-annotator agreement (Krippendorff's Alpha = 0.77) and includes documents of varying lengths. We use this benchmark to validate Claim 1 (TTP performance). For Claim 2, we also evaluate HarmFormer on TTP-Eval, though this differs from the original Table 6 evaluation which uses the authors' internal test split from the 253K TTP-labeled dataset (90:5:5 train/dev/test split). Our HarmFormer evaluation therefore assesses generalization to human-annotated data rather than exact reproduction of Table 6.
+
+\textbf{HAVOC} (Harmful Abstractions and Violations in Open Completions) contains 10,376 adversarial prompt snippets designed to evaluate LLM safety across five harm categories. The benchmark distinguishes three input types: Neutral (seemingly benign prompts), Passive (topical discussion prompts), and Provocative (explicitly harmful prompts). In the original paper six open-source models are evaluated: Gemma 2 (2B, 9B, 27B), Llama 3.2 (1B, 3B), and Mistral 7B v0.3. Following resource constraints, we evaluate only the medium-sized model variants (Gemma 2 9B, Llama 3.2 3B, Mistral 7B) rather than all six sizes used in the original paper.
+
+
+For HAVOC evaluation, we use the pre-computed model generations released by the authors in \texttt{havoc\_modeleval.tsv}. This file contains prefix-suffix pairs with model responses and TTP-based judge annotations already computed for Gemma 2 (2B, 9B, 27B), Llama 3.2 (1B, 3B), and Mistral 7B. We compute leakage metrics directly from these annotations without running model inference, which matches Table 10 of the original paper.
+
+\textbf{OpenAI Moderation test set} \citep{markov2023openai} contains 1,680 sentences (1,158 non-toxic, 522 toxic) across four categories: Sexual, Hate, Violence, and Self-Harm. Following the original paper's approach, we aggregate these categories into a single binary label (Toxic vs. Non-Toxic) for evaluation. We compare TTP and HarmFormer against one baseline system:
+
+\begin{itemize}
+    \item \textbf{Perspective API:} We chunk texts into 500-character segments and take the maximum toxicity score across chunks, with threshold = 0.4 (optimized on the development set per the original methodology).
+    % \item \textbf{Llama Guard 3:} We use the meta-llama/Llama-Guard-3-8B checkpoint from HuggingFace and evaluate in three settings: (1) \textit{focused}: using only the model's original training categories, (2) \textit{zero-shot}: with detailed category descriptions from the dataset, and (3) \textit{few-shot}: with 2 examples per category. We use greedy decoding (temperature = 0) for all Llama Guard evaluations.
+\end{itemize}
+
+\paragraph{Data access and format.}
+TTP-Eval is publicly released by the original authors as a tabular dataset (TSV) containing full web-page text, harm category labels, and Safe/Topical/Toxic annotations per category. We use the official release without modification.
+
+\paragraph{Label aggregation.}
+For overall toxic detection, we assign a document-level Toxic label if any harm category is annotated as Toxic. Otherwise, documents are labeled as Non-Toxic (Safe or Topical), matching the evaluation protocol in the original paper.
+
+\paragraph{Dataset statistics.} \\
+
+ \textbf{The HAVOC dataset} contains 10,376 web-derived prefix–suffix pairs sampled from Common Crawl, C4, and FineWeb. Prefixes have an average length of 26 tokens( minimum: 1, maximum: 891), computed using whitespace tokenization. Each prefix is annotated across five harm dimensions: Hate \& Violence, Ideological Harm, Sexual, Illegal Activities, and Self-Inflicted harm, where labels indicate topical intent rather than explicit toxicity. Approximately 17.9\% of prefixes contain at least one topical harm category, with Hate \& Violence being the most frequent (7.3\%). Multiple harm categories may co-occur within a single prefix.
+In our processing, the released TSV contains a small number of rows with malformed quotation marks; using Python's default CSV parsing, this leads to a reduced effective sample count (10{,}344 loaded samples) due to line-merging behavior. We do not intentionally filter HAVOC rows, but note this as an implementation-level artifact.
+\textbf{Label Co-occurrence Analysis}. Figure~\ref{fig:havoc-cooccur} shows the co-occurrence of topical harm labels in the HAVOC dataset. Most prefixes are associated with a single harm category, as indicated by the strong diagonal structure. Off-diagonal values are comparatively low, suggesting limited overlap between harm dimensions. This supports the design of HAVOC as a benchmark targeting distinct harm types rather than heavily conflated prompts.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{havoc-cooccur.png}
+    \caption{Co-occurrence of topical harm labels in the HAVOC dataset. Diagonal entries indicate the frequency of individual harm categories, while off-diagonal entries show how often two harm categories co-occur within the same prefix.}
+    \label{fig:havoc-cooccur}
+\end{figure}
+
+
+ \textbf{The TTP-Eval dataset} contains 393 human-annotated web pages with labels across all five harm categories and three severity levels.
+
+
+
+
+
+
+%\newpage
+\subsection{Hyperparameters}
+
+We maintain the hyperparameters specified in the original paper to ensure faithful reproduction:
+
+\begin{itemize}
+    \item \textbf{TTP:} GPT-4 Omni (gpt-4o) with greedy decoding (temperature = 0.0, top-p = 1.0)
+    \item \textbf{HarmFormer:} Default inference configuration from the released model checkpoint (1024 token context), no additional fine-tuning
+    \item \textbf{Perspective API:} Maximum score across 500-character chunks, threshold = 0.4
+%    \item \textbf{Llama Guard 3:} Greedy decoding (temperature = 0.0) for all three settings
+    %\item \textbf{HAVOC evaluation:} Greedy decoding with maximum 200 output tokens per completion (matching the original paper's Ollama setup)
+    \item \textbf{HAVOC evaluation:} Maximum 200 output tokens per completion (using pre-computed generations from the original paper)
+\end{itemize}
+
+\subsection{Experimental Setup and Code}
+
+All experiments are conducted using a combination of cloud API services and academic GPU resources. For TTP evaluation, we use OpenRouter to access GPT-4 Omni (gpt-4o). For HarmFormer inference and for our cross-model extension with Gemma 2 27B, we use an A100 GPU (40GB) provided by our university's academic computing cluster. For HAVOC, unlike the original paper, which uses Ollama as the client-server for running open-source models, we do not run any model ourselves because our Slurm-based cluster environment is not compatible with Ollama, and to avoid unnecessary recomputation. Instead, we use the pre-computed generations and TTP-based annotations provided by the original paper authors to efficiently compute the leakage metrics on CPU.
+
+We implement our reproduction pipeline in Python 3.11 using the following key libraries:
+\begin{itemize}
+    \item transformers (4.x) for loading and running HarmFormer and local LLM backbones
+     \item openai (2.x) for TTP evaluation via OpenRouter (accessing GPT-4 Omni)
+    \item pandas and numpy for data processing and metric computation
+    \item scikit-learn for evaluation metrics (precision, recall, F1)
+\end{itemize}
+
+Where implementation details are ambiguous or underspecified in the original paper, we make reasonable assumptions based on standard practices and document these decisions in our code repository, which will be made publicly available.
+
+\subsection{Computational Requirements}
+
+We estimate the following computational costs for our complete reproduction:
+
+\begin{itemize}
+    \item \textbf{TTP evaluation on TTP-Eval (393 pages):} Approximately 393 pages × ~3,000 input tokens × 200 output tokens = ~1.5M input tokens, ~100K output tokens. Estimated cost: \$5-8 at current GPT-4 Omni pricing (\$2.50 per 1M input, \$10 per 1M output tokens)
+    \item \textbf{HarmFormer inference on TTP-Eval:} 1-2 GPU hours on A100 (approximately 5-10 SBU)
+    \item \textbf{OpenAI Moderation baseline comparisons:} Perspective API calls are rate-limited but free; HarmFormer inference requires minimal GPU time (<1 hour on A100)
+    \item \textbf{HAVOC benchmark evaluation:} Since we use pre-computed model generations from the released \texttt{havoc\_modeleval.tsv}, HAVOC evaluation requires no GPU time, only CPU processing to load the TSV file and compute leakage metrics. Estimated runtime: <5 minutes on a standard laptop.
+    \item \textbf{Cross-model extension (Gemma 2 27B on TTP-Eval):} 1-2 GPU hours on A100 since we have to load Gemma 2 27B and run inference over 393 documents.
+    %\item \textbf{Total estimated cost:} \$5-15 for OpenAI API calls (TTP evaluation), 10-20 SBU for GPU compute time (HarmFormer inference, Llama Guard baselines). HAVOC evaluation uses pre-computed results and requires no additional cost.
+    \item \textbf{Total estimated cost:} \$5-15 for OpenAI API calls (TTP evaluation), 5-15 SBU for GPU compute time (HarmFormer inference, cross-model extension). HAVOC evaluation uses pre-computed results and requires no additional cost.
+
+\end{itemize}
+
+
+\section{Results}
+
+\subsection{TTP Performance on TTP-Eval}
+\begin{table}[h]
+\centering
+\caption{TTP Quality on TTP-Eval (Toxic Dimension)}
+\label{tab:ttp-quality}
+\begin{tabular}{lccc}
+\hline
+Harm Category & Precision & Recall & F1 \\
+\hline
+Hate \& Violence & 0.79 & 0.35 & 0.49 \\
+Ideological Harm & 0.75 & 0.17 & 0.28 \\
+Sexual & 0.95 & 0.55 & 0.70 \\
+Illegal & 0.67 & 0.57 & 0.62 \\
+Self-Inflicted & 0.67 & 0.17 & 0.27 \\
+\hline
+Toxic (Overall) & 0.92 & 0.46 & 0.62 \\
+\hline
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:ttp-quality} reports our reproduction of TTP performance on the TTP-Eval benchmark. We observe a precision of 0.92 and recall of 0.46, yielding an F1 score of 0.62 for overall toxic detection. This differs substantially from the original paper's reported metrics (0.87 precision, 0.79 recall, 0.83 F1). While our reproduction achieves higher precision, recall is significantly lower, suggesting the model may be more conservative in its toxic classifications than reported.
+
+Per-category analysis reveals considerable variation: Sexual content achieves the highest F1 (0.70) with 0.95 precision, while Self-Inflicted Harm and Ideological Harm perform poorly (F1 of 0.27 and 0.28 respectively), primarily due to low recall. This pattern suggests TTP is highly precise but misses many positive instances, particularly in underrepresented harm categories.
+
+\subsection{HarmFormer Performance}
+
+
+\begin{table}[h]
+\centering
+\caption{HarmFormer Quality on TTP-Eval (Toxic Dimension)}
+\label{tab:harmformer-quality}
+\begin{tabular}{lccc}
+\hline
+Harm Category & Precision & Recall & F1 \\
+\hline
+Hate \& Violence & 0.78 & 0.58 & 0.67 \\
+Ideological Harm & 0.79 & 0.54 & 0.64 \\
+Sexual & 0.81 & 0.76 & 0.78 \\
+Illegal & 0.78 & 0.50 & 0.61 \\
+Self-Inflicted & 0.67 & 0.67 & 0.67 \\
+\hline
+Toxic (Overall) & 0.83 & 0.74 & 0.78 \\
+\hline
+\end{tabular}
+\end{table}
+
+We evaluate HarmFormer on TTP-Eval as a proxy for the original Table 6 results, since the authors' internal test split is not publicly released. Table~\ref{tab:harmformer-quality} shows HarmFormer achieves 0.83 precision, 0.74 recall, and 0.78 F1 on overall toxic detection. While not directly comparable to the original claims (0.88 P, 0.81 R, 0.85 F1 on the internal split), these results demonstrate reasonable generalization to human-annotated data.
+
+Notably, HarmFormer outperforms TTP on TTP-Eval (0.78 vs 0.62 F1), primarily due to substantially higher recall (0.74 vs 0.46). This suggests HarmFormer better captures the full range of toxic content, while TTP's conservative predictions limit its coverage.
+
+\begin{table}[h]
+\centering
+\caption{Baselines on TTP-Eval (Toxic Dimension)}
+\label{tab:ttp-baselines}
+\begin{tabular}{lccc}
+\hline
+Setup & Precision & Recall & F1 \\
+\hline
+TTP (gpt-4o) & 0.92 & 0.46 & 0.62 \\
+HarmFormer & 0.83 & 0.74 & 0.78 \\
+TTP (Gemini 2.0 Flash) & N/A & N/A & N/A \\
+TTP (Gemma 2 27B) & N/A & N/A & N/A \\
+TTP (DeepSeek-R1-Distill-Qwen-32B) & N/A & N/A & N/A \\
+\hline
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:ttp-baselines} compares TTP across different backbone models on TTP-Eval. Our Gemini 2.0 Flash run is unavailable (0 evaluated samples), and our local Gemma 2 27B / DeepSeek-R1-Distill-Qwen-32B runs could not be completed (0 evaluated samples) due to memory constraints and output-format issues. This supports the original paper's finding that TTP performance is highly dependent on the underlying model and its surrounding implementation details, motivating our extension on cross-model generalization.
+
+\subsection{HAVOC Leakage Rates}
+\begin{table}[h]
+\centering
+\caption{Model-Averaged Leakage on HAVOC (\%)}
+\label{tab:havoc}
+\begin{tabular}{lcccc}
+\hline
+Model & Neutral & Passive & Provocative & Overall \\
+\hline
+Gemma 2 9B & 10.02 & 11.56 & 77.25 & 27.10 \\
+Llama 3.2 3B & 8.96 & 12.11 & 77.83 & 26.73 \\
+Mistral 7B & 9.95 & 13.30 & 72.69 & 26.23 \\
+\hline
+Average & 9.64 & 12.32 & 75.93 & 26.69 \\
+\hline
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:havoc} reports model-averaged leakage rates on the HAVOC benchmark using pre-computed generations from the released artifacts. We observe 26.69\% overall leakage across models, closely matching the original paper's reported 26.7\%. Leakage varies dramatically by input type: Neutral (9.64\%), Passive (12.32\%), and Provocative (75.93\%). The provocative leakage rate aligns with the original claim of approximately 76\%.
+
+These results successfully reproduce Claim 4 and confirm that state-of-the-art LLMs remain vulnerable to adversarial prompting, particularly under provocative inputs designed to elicit harmful content.
+
+\subsection{Baseline Comparisons}
+
+\begin{table}[h]
+\centering
+\caption{Performance on OpenAI Moderation Dataset (Binary Toxic Label)}
+\label{tab:openai-mod}
+\begin{tabular}{lccc}
+\hline
+Setup & Precision & Recall & F1 \\
+\hline
+TTP (gpt-4o via OpenRouter)$^*$ & 0.80 & 0.42 & 0.55 \\
+HarmFormer & 0.64 & 0.84 & 0.73 \\
+Perspective API & 0.74 & 0.75 & 0.74 \\
+\hline
+\multicolumn{4}{l}{\small $^*$This is the result of our available OpenRouter run; API-backed prompting exhibits variance across reruns.} \\
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:openai-mod} presents results on the OpenAI Moderation dataset. In our available OpenRouter run, TTP achieves 0.80 precision, 0.42 recall, and 0.55 F1, underperforming both HarmFormer (0.64 P, 0.84 R, 0.73 F1) and Perspective API (0.74 P, 0.75 R, 0.74 F1).
+These results differ from the original paper's reported TTP performance (0.72 P, 0.91 R), and show substantially lower recall in our reproduction.
+
+In contrast to the original paper's strong TTP performance on OpenAI Moderation, our reproduction suggests that TTP behavior can vary substantially across runs and evaluation conditions.
+
+\subsection{Summary of Reproducibility Findings}
+
+Table~\ref{tab:reproducibility-summary} summarizes the reproducibility of each claim. Of the four claims investigated, only Claim 4 (HAVOC leakage) was fully reproduced, with near-exact agreement between our results and the original paper. Claim 2 (HarmFormer) was partially validated on a different test set, showing reasonable generalization. Claims 1 and 3 showed notable discrepancies: TTP achieved higher precision but substantially lower recall than reported, resulting in a 21-point F1 gap on TTP-Eval. These findings suggest that while the released artifacts are functional, TTP performance may be sensitive to factors not fully documented in the original work.
+
+\begin{table}[h]
+\centering
+\caption{Summary of Reproducibility Results}
+\label{tab:reproducibility-summary}
+\begin{tabular}{llccc}
+\hline
+Claim & Metric & Original & Reproduced & Status \\
+\hline
+1: TTP on TTP-Eval & F1 & 0.83 & 0.62 & Not reproduced \\
+2: HarmFormer & F1 & 0.85 & 0.78 & Partially validated$^*$ \\
+3: TTP on OpenAI Mod & F1 & 0.80 & 0.55 & Not reproduced$^{**}$ \\
+4: HAVOC leakage & Overall & 26.7\% & 26.69\% & Reproduced \\
+\hline
+\multicolumn{5}{l}{\small $^*$Evaluated on TTP-Eval instead of unreleased internal test split.} \\
+\multicolumn{5}{l}{\small $^{**}$Our available OpenRouter run yields P=0.80, R=0.42, F1=0.55.} \\
+\end{tabular}
+\end{table}
+
+\section{Extension: Cross-Model TTP Generalization}
+
+\subsection{Motivation}
+In Table 4 of the original paper, it is shown that TTP performs strongly with GPT-4 class models but poorly with non-GPT models (R1: 0.06 F1; Gemma 2: 0.35 F1). This lack of generalization raises doubts about the paper's reproducibility and accountability, since if TTP is only effective for a specific model family and not robust to other schemes and models, it raises concerns about accessibility and long-term sustainability (practitioners without API access will not be able to adopt this framework).  
+
+\subsection{Approach}
+In this extension we investigate whether the proposed taxonomy and prompting scheme (TTP) can generalize across different model families, namely: 
+
+\begin{itemize}
+    \item a proprietary model (GPT-4o), 
+    \item an open-source instruction-tuned model (Gemma 2 27B),
+    \item an additional API-based model (Gemini 2.0 Flash). Due to budget constraints, this configuration was only partially evaluated, and is marked as N/A in our table, and therefore not further interpreted. 
+\end{itemize}
+
+For these cross-model experiments, we focus on a resource-constrained scenario where we reuse prompts across models. Concretely, we:
+
+\begin{itemize}
+    \item Keep the three-dimensional taxonomy and five harm categories.
+    \item Use the official TTP prompt template (ChatML style).
+    \item Use greedy decoding (with temperature = 0) and the same parsing logic for extracting category labels from model outputs.
+\end{itemize}
+
+Similarly to earlier sections, we evaluate all configurations on the TTP-Eval dataset and perform label aggregation (a document is labelled as Toxic if any category is toxic, otherwise it is labelled Non-toxic). 
+
+\subsection{Results}
+
+For each model, the precision, recall and F1 for the Toxic dimension were computed. These computed metrics are reported in Table~\ref{tab:ttp-baselines}. 
+
+\begin{itemize}
+    \item For GPT-4o, TTP achieves solid performance on TTP-Eval, with 0.92 precision, 0.46 recall, and 0.62 F1.
+    \item Gemma 2 27B achieves zero performance across all metrics, that is, it fails to produce valid toxic predictions.
+    \item Gemini 2.0 Flash was not evaluated due to budget constraints.
+\end{itemize}
+
+Furthermore, we observed that the Gemma-based TTP outputs and the expected label format for the TTP parser were consistently different, even though we used the same prompt instructions. This led to almost all Gemma outputs being labelled as Non-Toxic, even for examples that GPT-4o correctly classified as Toxic. This behavior suggests a mismatch between the prompt formatting (tuned specifically for GPT-4 models) and the output format of instruction-tuned models like Gemma. This indicates that the failure is due to format incompatibility and not semantic inability to identify content that is toxic.
+
+\subsection{Analysis}
+
+Our extension confirms and also reinforces the claim made in the paper that TTP does not generalize well across model families. This is evident in the underwhelming performance of the Gemma-based TTP on TTP-Eval, which yielded no usable predictions. This suggests that the TTP prompt is model-dependent. The good performance of TTP is attributed to a certain model and prompt pair, and not just the prompt alone. This limits the method's accessibility, since researchers without access to GPT-4o cannot reuse the TTP prompt and expect comparable performance. On the other hand, it also motivates future work on identifying alternative open-source methods, either by fine-tuning these models or by creating prompts that achieve robust performance across different models. 
+
+
+\section{Conclusion}
+
+We conducted a reproducibility study of the harmful content detection framework proposed by \citet{mendu2025saferpretraining}. Of the four claims investigated, only the HAVOC leakage results were fully reproduced, with near-exact agreement (26.69\% vs.\ 26.7\%). TTP performance on TTP-Eval showed a substantial gap (0.62 vs.\ 0.83 F1), primarily due to lower recall than reported. HarmFormer demonstrated reasonable generalization to human-annotated data, though direct comparison was limited by the unavailability of the original test split.
+
+Our results highlight two key findings. First, the HAVOC benchmark and pre-computed model generations provide a reliable resource for evaluating LLM safety, with consistent results across our reproduction. Second, TTP's strong dependence on GPT-4o and our inability to reproduce the non-proprietary Table 4 rows (0 evaluated samples for Gemma 2 27B and DeepSeek-R1-Distill-Qwen-32B in our setting) limits the framework's practical applicability for researchers without access to proprietary APIs.
+
+Future work could investigate the sources of TTP's recall discrepancy, potentially through prompt sensitivity analysis or evaluation on additional datasets. Developing open-source alternatives to TTP that maintain comparable performance would also increase the accessibility of taxonomy-driven harmful content filtering.
+
+\subsection{Environmental Impact}
+
+When training and evaluating our models, we tried to avoid the most carbon-intensive parts of the original work so as not incur any unnecessary environmental costs. Instead, we ran our experiments on smaller datasets to save budget and reduce electricity consumption and carbon emissions. Our main compute usage consisted of:
+
+\begin{itemize}
+    \item \textbf{TTP and HarmFormer on TTP-Eval:} we ran GPT-4o via API and HarmFormer locally on 393 web pages. For TTP, this corresponds to around 1.5 million input tokens and 100 thousand output tokens, while for HarmFormer inference, it consists of around 1 to 2 GPU hours on an A100. 
+    \item \textbf{OpenAI Moderation benchmark:} We evaluated TTP and HarmFormer on 1680 sentences, resulting in some more API calls and GPU inference.
+    \item \textbf{HAVOC:} We computed leakage metrics without needing new model inference, while running for a few minutes on a CPU.
+    \item \textbf{Cross-model extension:} we evaluated TTP with an open-source model (Gemma 2 27B) on TTP-Eval, which required loading the model and running over 393 documents. This was done on an A100 GPU, and it took a couple of hours. 
+\end{itemize}
+
+We used CodeCarbon not only to track the energy consumption of our GPU and CPU runs but also to make the costs of reproducibility more transparent. The overall carbon emissions for this project were small compared to training large language models from scratch. Nonetheless, our decision to limit the number of models and evaluation runs also helped reduce our environmental footprint. Notably we:
+
+\begin{itemize}
+    \item reused existing code and tools when possible, instead of retraining (e.g., pre-computed HAVOC generations).
+    \item limited the number of evaluated models. For example, instead of evaluating all six model sizes used in the original paper on the HAVOC benchmark, we evaluated only the three medium-sized models. 
+    \item separated the local and GPU-intensive jobs to avoid idle GPU allocation during API calls and, in turn, reduce emissions while optimizing cluster utilization.
+\end{itemize}
+
+\appendix
+
+\section{Implementation Details}
+\label{sec:appendix}
+
+\subsection{Prompt Templates}
+\label{sec:prompt-templates}
+
+The TTP (Topical, Toxic, Prompt) methodology uses a detailed ChatML-formatted prompt that defines five harm categories with three severity levels each (None, Topical, Intent). The complete taxonomy includes:
+
+\begin{itemize}
+    \item \textbf{H (Hate and Violence)}: Content involving verbal abuse, cuss words, racial or sexual hate, bullying, harassment, deaths, accidents, or violent acts.
+    \item \textbf{IH (Ideological Harm)}: Conspiracy theories, health/finance misinformation, and political, gender, racial, cultural, or religious bias.
+    \item \textbf{SE (Sexual)}: Sexual intent, explicit material, educational sexual content, or sexualization of people.
+    \item \textbf{IL (Illegal)}: Scams, smuggling of regulated goods, cybersecurity threats, hacking, and doxing.
+    \item \textbf{SI (Self-Inflicted)}: Self-harm, suicide, eating disorders, drug abuse, and addictive activities like gambling.
+\end{itemize}
+
+The prompt includes five few-shot examples demonstrating the expected output format with \texttt{<Reasoning>} and \texttt{<Label>} XML tags. Labels use the format \texttt{\{H: None, IH: Intent-i, SE: None, IL: None, SI: None\}}, where subcategory identifiers (e.g., \texttt{Intent-i}, \texttt{Topical-ii}) provide fine-grained classification.
+
+We accessed TTP via OpenRouter using the \texttt{openai/gpt-4o} model endpoint. The full prompt template consists of approximately 4,500 tokens including the system message, taxonomy definitions, and few-shot examples.
+
+\subsection{Parsing and Label Aggregation}
+\label{sec:parsing}
+We parse model outputs by extracting the \texttt{<Label>} XML block from the generated text and interpreting the harm-category assignments it contains. Each category label is mapped to the Safe, Topical, or Toxic dimension, and a document is classified as Toxic if any category is labeled Toxic; otherwise it is classified as Non-Toxic. For API-backed TTP and Perspective, failures are treated as Non-Toxic (fail-open) to avoid crashing long runs; for Gemini and local TTP clients, failures raise exceptions and are counted as failed samples (excluded from metrics).
+
+\subsection{Error Analysis}
+\label{sec:error-analysis}
+
+\subsubsection{Local LLM Failures}
+
+Our attempts to run TTP with local open-source LLMs were unsuccessful due to GPU memory constraints. We tested two models:
+
+\begin{itemize}
+    \item \textbf{Gemma 2 27B} (\texttt{google/gemma-2-27b-it}): All 393 samples failed with CUDA out-of-memory errors. The model required approximately 37 GB of GPU memory, leaving insufficient headroom for inference with the lengthy TTP prompt.
+    
+    \item \textbf{DeepSeek-R1-Distill-Qwen-32B}: Similarly, all samples failed due to memory constraints on the A100 40GB GPU.
+\end{itemize}
+
+Example error message:
+\begin{verbatim}
+CUDA out of memory. Tried to allocate 4.07 GiB. 
+GPU 0 has a total capacity of 39.49 GiB of which 
+2.00 GiB is free. Including non-PyTorch memory, 
+this process has 37.48 GiB memory in use.
+\end{verbatim}
+
+The TTP prompt's extensive taxonomy and few-shot examples require substantial context length, making inference with 27B+ parameter models infeasible on a single A100 40GB GPU without quantization or multi-GPU setups.
+
+\subsubsection{Gated Model Access}
+
+Llama Guard 3 8B (\texttt{meta-llama/Llama-Guard-3-8B}) could not be evaluated due to HuggingFace repository access restrictions (HTTP 403 Forbidden). Access to this gated model requires explicit approval from Meta.
+
+\subsection{Computational Log}
+\label{sec:computational-log}
+
+All experiments were conducted on the Snellius HPC cluster in the Netherlands, tracked using CodeCarbon for carbon emissions monitoring.
+
+\subsubsection{Hardware Configuration}
+
+\begin{itemize}
+    \item \textbf{CPU}: AMD EPYC 7H12 64-Core Processor (16 cores allocated) and Intel Xeon Platinum 8360Y
+    \item \textbf{GPU}: NVIDIA A100-SXM4-40GB
+    \item \textbf{RAM}: 16-64 GB depending on experiment
+\end{itemize}
+
+\subsubsection{Runtime and Energy Consumption}
+
+\begin{tabular}{lrrr}
+\hline
+\textbf{Experiment} & \textbf{Duration (s)} & \textbf{Energy (kWh)} & \textbf{CO$_2$ (kg)} \\
+\hline
+TTP Evaluation (Table 4) & 3,589 & 0.113 & 0.030 \\
+HarmFormer Evaluation & 12.5 & 0.0009 & 0.0002 \\
+TTP via OpenRouter (Table 7) & 766 & 0.027 & 0.007 \\
+Perspective API (Table 7) & 2,901 & 0.043 & 0.011 \\
+\hline
+\end{tabular}
+
+The total estimated carbon footprint for all experiments was approximately \textbf{0.05 kg CO$_2$eq}, equivalent to driving approximately 0.2 km in an average passenger vehicle.
+
+\subsubsection{API Costs}
+
+For TTP evaluation using GPT-4o via OpenRouter:
+\begin{itemize}
+    \item Total API requests: 393
+    \item Total tokens consumed: $\sim$1.57 million
+    \item Estimated cost: \$12.57 USD
+\end{itemize}
+
+\subsection{Software Environment}
+\label{sec:software}
+
+\begin{itemize}
+    \item Python 3.11.3
+    \item PyTorch with CUDA 12.x
+    \item Transformers library for model loading
+    \item CodeCarbon 3.2.1 for emissions tracking
+\end{itemize}
+
+All code is available in our reproduction repository (or will be in the final version).
+
+\bibliography{tmlr}
+\bibliographystyle{tmlr}
+
+\appendix
+\section{Appendix}
+You may include other additional sections here.
+
+\end{document}

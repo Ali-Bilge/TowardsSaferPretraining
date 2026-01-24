@@ -1,0 +1,5 @@
+/gpfs/home6/scur0009/TowardsSaferPretraining/venv/lib/python3.11/site-packages/torch/cuda/__init__.py:827: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/12 [00:00<?, ?it/s]Loading checkpoint shards:   8%|▊         | 1/12 [00:03<00:34,  3.14s/it]Loading checkpoint shards:  17%|█▋        | 2/12 [00:07<00:36,  3.70s/it]Loading checkpoint shards:  25%|██▌       | 3/12 [00:12<00:39,  4.41s/it]/var/spool/slurm/slurmd/job18646710/slurm_script: line 4: 1632294 Killed                  python scripts/evaluate_ttp_eval.py --setups local_ttp --local-model google/gemma-2-27b-it --device cuda --dtype float16 --limit 2 --output test_parsing_results.json
+[2026-01-23T14:43:52.847] error: Detected 1 oom_kill event in StepId=18646710.batch. Some of the step tasks have been OOM Killed.

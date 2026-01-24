@@ -1,0 +1,17 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/12 [00:00<?, ?it/s]Loading checkpoint shards:   8%|▊         | 1/12 [00:03<00:38,  3.49s/it]Loading checkpoint shards:  17%|█▋        | 2/12 [00:07<00:36,  3.61s/it]Loading checkpoint shards:  25%|██▌       | 3/12 [00:10<00:32,  3.62s/it]Loading checkpoint shards:  33%|███▎      | 4/12 [00:14<00:29,  3.66s/it]Loading checkpoint shards:  42%|████▏     | 5/12 [00:18<00:25,  3.63s/it]Loading checkpoint shards:  50%|█████     | 6/12 [00:21<00:21,  3.63s/it]Loading checkpoint shards:  58%|█████▊    | 7/12 [00:27<00:21,  4.29s/it]Loading checkpoint shards:  67%|██████▋   | 8/12 [00:30<00:15,  4.00s/it]Loading checkpoint shards:  75%|███████▌  | 9/12 [00:34<00:11,  3.91s/it]Loading checkpoint shards:  83%|████████▎ | 10/12 [00:38<00:07,  3.97s/it]Loading checkpoint shards:  92%|█████████▏| 11/12 [00:43<00:04,  4.11s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:43<00:00,  3.03s/it]Loading checkpoint shards: 100%|██████████| 12/12 [00:43<00:00,  3.63s/it]
+Some parameters are on the meta device because they were offloaded to the cpu.
+[codecarbon WARNING @ 19:06:03] Multiple instances of codecarbon are allowed to run at the same time.
+[DEBUG] Chat template failed for google/gemma-2-27b-it, map_assistant=False: System role not supported
+[DEBUG] Chat template failed for google/gemma-2-27b-it, map_assistant=True: System role not supported
+[DEBUG] Using fallback prompt format for google/gemma-2-27b-it
+[DEBUG] Prompt length: 26087 chars, max_input_tokens: 8192
+[DEBUG] Tokenized to 5942 tokens
+The following generation flags are not valid and may be ignored: ['temperature']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+[TTP (Local: google/gemma-2-27b-it)] sample failed: CUDA out of memory. Tried to allocate 4.21 GiB. GPU 0 has a total capacity of 39.49 GiB of which 2.48 GiB is free. Including non-PyTorch memory, this process has 37.00 GiB memory in use. Of the allocated memory 36.42 GiB is allocated by PyTorch, and 84.34 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[DEBUG] Chat template failed for google/gemma-2-27b-it, map_assistant=False: System role not supported
+[DEBUG] Chat template failed for google/gemma-2-27b-it, map_assistant=True: System role not supported
+[DEBUG] Using fallback prompt format for google/gemma-2-27b-it
+[DEBUG] Prompt length: 29156 chars, max_input_tokens: 8192
+[DEBUG] Tokenized to 6912 tokens
+[TTP (Local: google/gemma-2-27b-it)] sample failed: CUDA out of memory. Tried to allocate 2.85 GiB. GPU 0 has a total capacity of 39.49 GiB of which 2.53 GiB is free. Including non-PyTorch memory, this process has 36.96 GiB memory in use. Of the allocated memory 34.42 GiB is allocated by PyTorch, and 2.04 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
