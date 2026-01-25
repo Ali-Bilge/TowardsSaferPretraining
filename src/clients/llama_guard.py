@@ -31,6 +31,7 @@ class LlamaGuardClient:
     MODEL_NAME = "meta-llama/Llama-Guard-3-8B"
 
     CATEGORY_MAPPING = {
+        # Llama Guard 3 native categories (focused mode)
         "S1": ["hate_violence"],
         "S2": ["illegal"],
         "S3": ["sexual"],
@@ -42,6 +43,16 @@ class LlamaGuardClient:
         "S9": ["sexual"],
         "S10": ["ideological"],
         "S11": ["illegal"],
+        # Zero-shot / few-shot category mappings (OpenAI Moderation format)
+        "S": ["sexual"],
+        "H": ["hate_violence"],
+        "V": ["hate_violence"],
+        "HR": ["hate_violence"],  # harassment
+        "SH": ["self_inflicted"],  # self-harm
+        "S3": ["sexual"],  # sexual/minors (overwrites above, same mapping)
+        "H2": ["hate_violence"],  # hate/threatening
+        "V2": ["hate_violence"],  # violence/graphic
+        "safe": [],  # explicitly safe - no harm categories
     }
 
     _PROMPT_FOCUSED = string.Template(
@@ -154,6 +165,16 @@ $text
             self.model.to(self.device)  # type: ignore
         self.model.eval()
         logger.info("Llama Guard loaded on %s", self.device)
+
+    def cleanup(self) -> None:
+        """Unload model from GPU to free memory."""
+        if hasattr(self, 'model'):
+            del self.model
+        if hasattr(self, 'tokenizer'):
+            del self.tokenizer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info("Llama Guard model unloaded and GPU cache cleared")
 
     def classify_text(self, text: str) -> tuple[bool, List[str]]:
         text = text.strip()

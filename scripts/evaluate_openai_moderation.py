@@ -143,48 +143,15 @@ def main() -> int:
             )
         )
 
+    # Llama Guard variants are processed sequentially below to avoid OOM
+    # (loading 3 copies of 8B model would exceed A100 40GB memory)
+    llama_guard_modes: List[Tuple[str, str]] = []
     if "llama_guard" in args.baselines:
-        try:
-            classifiers.append(
-                (
-                    "Llama Guard",
-                    LlamaGuard(
-                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
-                        device=args.device,
-                        prompt_mode="focused",
-                    ),
-                )
-            )
-        except Exception as e:
-            print(f"Warning: Skipping Llama Guard (failed to load model): {e}")
+        llama_guard_modes.append(("Llama Guard", "focused"))
     if "llama_guard_zero_shot" in args.baselines:
-        try:
-            classifiers.append(
-                (
-                    "Llama Guard Zero Shot",
-                    LlamaGuard(
-                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
-                        device=args.device,
-                        prompt_mode="zero_shot",
-                    ),
-                )
-            )
-        except Exception as e:
-            print(f"Warning: Skipping Llama Guard Zero Shot (failed to load model): {e}")
+        llama_guard_modes.append(("Llama Guard Zero Shot", "zero_shot"))
     if "llama_guard_few_shot" in args.baselines:
-        try:
-            classifiers.append(
-                (
-                    "Llama Guard Few Shot",
-                    LlamaGuard(
-                        model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
-                        device=args.device,
-                        prompt_mode="few_shot",
-                    ),
-                )
-            )
-        except Exception as e:
-            print(f"Warning: Skipping Llama Guard Few Shot (failed to load model): {e}")
+        llama_guard_modes.append(("Llama Guard Few Shot", "few_shot"))
 
     if "ttp" in args.baselines:
         openai_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
@@ -212,9 +179,36 @@ def main() -> int:
         classifiers.append(("HarmFormer", HarmFormer(device=args.device)))
 
     results: List[Dict[str, Any]] = []
+    all_baseline_names: List[str] = []
+
+    # Process Llama Guard variants sequentially to avoid OOM
+    # (each 8B model uses ~16GB; loading 3 at once would exceed A100 40GB)
+    for name, mode in llama_guard_modes:
+        try:
+            print(f"Loading {name} (mode={mode})...")
+            clf = LlamaGuard(
+                model_name=args.llama_guard_model or LlamaGuard.MODEL_NAME,
+                device=args.device,
+                prompt_mode=mode,
+            )
+            with maybe_track_emissions(run_name=f"moderation_{name.replace(' ', '_').lower()}"):
+                results.append(_evaluate_binary(name, clf, samples))
+            all_baseline_names.append(name)
+            # Free GPU memory before loading next variant
+            print(f"Cleaning up {name}...")
+            clf.cleanup()
+            del clf
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception as e:
+            print(f"Warning: Skipping {name} (failed): {e}")
+
+    # Process other classifiers (non-Llama Guard)
     for name, clf in classifiers:
         with maybe_track_emissions(run_name=f"moderation_{name.replace(' ', '_').lower()}"):
             results.append(_evaluate_binary(name, clf, samples))
+        all_baseline_names.append(name)
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -222,7 +216,7 @@ def main() -> int:
         "evaluation_config": {
             "dataset": str(args.data_path),
             "total_samples": len(samples),
-            "baselines": [n for n, _ in classifiers],
+            "baselines": all_baseline_names,
             "perspective_threshold": args.perspective_threshold,
             "device": args.device,
         },

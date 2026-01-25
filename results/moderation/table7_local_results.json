@@ -3,12 +3,141 @@
     "dataset": "data/moderation-api-release/data/samples-1680.jsonl.gz",
     "total_samples": 1680,
     "baselines": [
+      "Llama Guard",
+      "Llama Guard Zero Shot",
+      "Llama Guard Few Shot",
       "HarmFormer"
     ],
     "perspective_threshold": 0.4,
     "device": "cuda"
   },
   "results": [
+    {
+      "classifier": "Llama Guard",
+      "total_samples": 1680,
+      "failed_samples": 0,
+      "evaluated_samples": 1680,
+      "metrics": {
+        "overall": {
+          "precision": 0.8212180746561886,
+          "recall": 0.8007662835249042,
+          "f1": 0.8108632395732298
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.819047619047619,
+            "recall": 0.32950191570881227,
+            "f1": 0.46994535519125685
+          },
+          "IH": {
+            "precision": 0.8317307692307693,
+            "recall": 0.3314176245210728,
+            "f1": 0.4739726027397261
+          },
+          "SE": {
+            "precision": 0.8232931726907631,
+            "recall": 0.39272030651340994,
+            "f1": 0.5317769130998703
+          },
+          "IL": {
+            "precision": 0.625,
+            "recall": 0.1053639846743295,
+            "f1": 0.18032786885245902
+          },
+          "SI": {
+            "precision": 0.9361702127659575,
+            "recall": 0.0842911877394636,
+            "f1": 0.1546572934973638
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 1680
+      }
+    },
+    {
+      "classifier": "Llama Guard Zero Shot",
+      "total_samples": 1680,
+      "failed_samples": 0,
+      "evaluated_samples": 1680,
+      "metrics": {
+        "overall": {
+          "precision": 0.6756756756756757,
+          "recall": 0.7183908045977011,
+          "f1": 0.6963788300835655
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.8758169934640523,
+            "recall": 0.2567049808429119,
+            "f1": 0.3970370370370371
+          },
+          "IH": {
+            "precision": 0.8646616541353384,
+            "recall": 0.22030651340996169,
+            "f1": 0.3511450381679389
+          },
+          "SE": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1": 0.6666666666666666
+          },
+          "IL": {
+            "precision": 0.8421052631578947,
+            "recall": 0.27586206896551724,
+            "f1": 0.41558441558441556
+          },
+          "SI": {
+            "precision": 0.8387096774193549,
+            "recall": 0.14942528735632185,
+            "f1": 0.25365853658536586
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 1680
+      }
+    },
+    {
+      "classifier": "Llama Guard Few Shot",
+      "total_samples": 1680,
+      "failed_samples": 0,
+      "evaluated_samples": 1680,
+      "metrics": {
+        "overall": {
+          "precision": 0.712890625,
+          "recall": 0.6992337164750958,
+          "f1": 0.7059961315280465
+        },
+        "per_harm": {
+          "H": {
+            "precision": 0.9622641509433962,
+            "recall": 0.19540229885057472,
+            "f1": 0.3248407643312102
+          },
+          "IH": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "SE": {
+            "precision": 0.6239782016348774,
+            "recall": 0.4386973180076628,
+            "f1": 0.515185601799775
+          },
+          "IL": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "SI": {
+            "precision": 0.8717948717948718,
+            "recall": 0.06513409961685823,
+            "f1": 0.12121212121212122
+          }
+        },
+        "dimension": "toxic",
+        "total_samples": 1680
+      }
+    },
     {
       "classifier": "HarmFormer",
       "total_samples": 1680,
