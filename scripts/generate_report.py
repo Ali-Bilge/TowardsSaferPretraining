@@ -183,6 +183,7 @@ try:
         for p in [
             "results/moderation/table7_api_results.json",
             "results/moderation/table7_local_results.json",
+            "results/moderation/table7_ttp_openrouter.json",
         ]:
             try:
                 payload = load_json(p)
